@@ -1,8 +1,1 @@
-{
-    "node": {
-        "types": [
-            "game_server",
-            "web_server"
-        ]
-    }
-}
+{}

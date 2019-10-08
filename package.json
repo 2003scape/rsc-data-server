@@ -7,7 +7,8 @@
     "start": "node index",
     "build-db": "knex migrate:latest",
     "rollback-db": "knex migrate:rollback",
-    "add-node": "node scripts/add-node"
+    "add-node": "node scripts/add-node",
+    "generate-ssl-keys": "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem"
   },
   "author": "Zachary Penn <zack@sysdevs.org>",
   "license": "ISC",
