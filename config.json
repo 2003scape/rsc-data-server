@@ -5,5 +5,8 @@
             "key": "localhost-privkey.pem",
             "cert": "localhost-cert.pem"
         }
+    },
+    "middleware": {
+        "key-header": "x-uuid-key"
     }
 }
