@@ -14,13 +14,15 @@ function unauthorized(res) {
     })
 }
 
-module.exports = (server, db) => {
-    server.use(async (req, res, next) => {
+module.exports = async server => {
+    try {
+        const [req, res, next] = await server.use()
+
         if (!req.headers[keyHeader]) {
             return unauthorized(res)
         }
 
-        const results = await db.select('enabled').from('nodes').where({
+        const results = await server.db.select('enabled').from('nodes').where({
             key: req.headers[keyHeader],
             enabled: true
         })
@@ -30,5 +32,8 @@ module.exports = (server, db) => {
         }
 
         next()
-    })
+    } catch (error) {
+        console.error(`critical error: ${error}`)
+        throw error
+    }
 }

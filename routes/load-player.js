@@ -20,25 +20,24 @@ const LoginResult = {
     staff: 25
 }
 
-module.exports = async (server, db) => {
-    server.get('/player/:username/:password', (req, res) => {
-        try {
-            res.send({
-                result: LoginResult.staff,
-                profile: {
-                    username: req.params.username,
-                    password: req.params.password,
-                    status: 0x4 | 0x2 | 0x1, // admin
-                    x: 122,
-                    y: 657
-                }
-            })
-        } catch (error) {
-            console.error(`error while loading profile: ${error}`)
+module.exports = async server => {
+    try {
+        const [req, res] = await server.get('/player/:username/:password')
 
-            res.send({
-                result: LoginResult.accountLoadingError
-            })
-        }
-    })
+        res.send({
+            result: LoginResult.staff,
+            profile: {
+                username: req.params.username,
+                password: req.params.password,
+                status: 0x4 | 0x2 | 0x1, // hack for admin priv..
+                x: 122,
+                y: 657
+            }
+        })
+    } catch (error) {
+        console.error(`critical error: ${error}`)
+        res.send({
+            result: LoginResult.accountLoadingError
+        })
+    }
 }
