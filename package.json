@@ -1,0 +1,19 @@
+{
+  "name": "rsc-data-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index",
+    "build-db": "knex migrate:latest",
+    "rollback-db": "knex migrate:rollback",
+    "add-node": "node scripts/add-node"
+  },
+  "author": "Zachary Penn <zack@sysdevs.org>",
+  "license": "ISC",
+  "dependencies": {
+    "knex": "^0.19.5",
+    "sqlite3": "^4.1.0",
+    "uuid": "^3.3.3"
+  }
+}
