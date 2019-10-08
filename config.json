@@ -1,1 +1,9 @@
-{}
+{
+    "server": {
+        "port": 1234,
+        "ssl": {
+            "key": "localhost-privkey.pem",
+            "cert": "localhost-cert.pem"
+        }
+    }
+}
