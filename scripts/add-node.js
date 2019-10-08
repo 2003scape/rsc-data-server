@@ -1,10 +1,10 @@
 const readline = require('readline')
 const knex = require('knex')
-
-const config = require('../config')
+const uuid = require('uuid/v4')
 const input = require('../input')
 
 const db = knex(require('../knexfile').development)
+
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -13,17 +13,22 @@ const rl = readline.createInterface({
 async function main() {
     try {
         const name = await input.ask(rl, 'What is the node\'s (unique) name? ')
-        const type = await input.askList(rl, 'What type of node is this?',
-            config.node.types)
+        const desc = await input.ask(rl,
+            'Give a brief description of the node (optional): ')
+        const key = uuid()
+        console.log(`Creating new node '${name}'..`)
 
-        console.log(`Creating new node '${name}' of type '${type}'..`)
+        const result = await db.insert({
+            name: name,
+            description: desc,
+            key: key,
+            enabled: true
+        }).into('nodes')
 
-        const result = await db.insert({ name: name, type: type })
-            .into('nodes')
-
-        console.log(`Successfully created ${name}. Its id is ${result[0]}.`)
+        console.log(`Successfully created node '${name}'.`)
+        console.log(`Its ID is ${result} and key is '${key}'`)
     } catch (error) {
-        console.error(`Error creating new node: ${error.message}`)
+        console.error(`Error creating new node:\n${error.message}`)
     }
     rl.close()
     db.destroy()
