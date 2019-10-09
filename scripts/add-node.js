@@ -1,7 +1,7 @@
 const readline = require('readline')
 const knex = require('knex')
 const uuid = require('uuid/v4')
-const input = require('../input')
+const input = require('../util').input
 
 const db = knex(require('../knexfile').development)
 

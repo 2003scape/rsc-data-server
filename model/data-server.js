@@ -47,9 +47,15 @@ class DataServer {
         })
     }
 
-    async listen() {
+    async bind() {
         return new Promise(async resolve => {
             this.http.listen(this.config.server.port || 8080, resolve)
+        })
+    }
+
+    async unbind() {
+        return new Promise(async resolve => {
+            this.http.close(resolve)
         })
     }
 }
