@@ -1,7 +1,7 @@
 {
   "name": "rsc-data-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "manage rsc-server worlds, player persistence, friends, etc.",
   "main": "index.js",
   "scripts": {
     "start": "node index",
@@ -10,12 +10,27 @@
     "add-node": "node scripts/add-node",
     "generate-ssl-keys": "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem"
   },
-  "author": "Zachary Penn <zack@sysdevs.org>",
-  "license": "ISC",
+  "author": "2003Scape Team",
+  "license": "AGPL-3.0+",
   "dependencies": {
     "knex": "^0.19.5",
     "restify": "^8.4.0",
     "sqlite3": "^4.1.0",
     "uuid": "^3.3.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2003scape/rsc-data-server.git"
+  },
+  "keywords": [
+    "runescape",
+    "classic",
+    "mmorpg",
+    "game",
+    "server"
+  ],
+  "bugs": {
+    "url": "https://github.com/2003scape/rsc-data-server/issues"
+  },
+  "homepage": "https://github.com/2003scape/rsc-data-server#readme"
 }
