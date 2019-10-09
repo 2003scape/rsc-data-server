@@ -35,6 +35,18 @@ class DataServer {
         })
     }
 
+    async post(...args) {
+        return new Promise(resolve => {
+            this.http.get(...args, (...postArgs) => resolve([...postArgs]))
+        })
+    }
+
+    async put(...args) {
+        return new Promise(resolve => {
+            this.http.put(...args, (...putArgs) => resolve([...putArgs]))
+        })
+    }
+
     async listen() {
         return new Promise(async resolve => {
             this.http.listen(this.config.server.port || 8080, resolve)

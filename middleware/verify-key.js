@@ -9,9 +9,10 @@ const keyHeader = config.middleware['key-header']
 
 function unauthorized(res) {
     res.status(401)
-    res.send({
+    res.json({
         error: 'unauthorized access'
     })
+    res.end()
 }
 
 module.exports = async server => {
@@ -34,6 +35,10 @@ module.exports = async server => {
         next()
     } catch (error) {
         console.error(`critical error: ${error}`)
-        throw error
+        res.status(500)
+        res.json({
+            error: 'internal server error'
+        })
+        res.end()
     }
 }
