@@ -1,20 +1,25 @@
 const JsonSocket = require('json-socket')
+const state = require('state')
+const SessionState = require('./session-state')
+const uuid = require('uuid/v4')
 
 class Session {
     constructor(server, socket) {
         this.server = server
         this.socket = new JsonSocket(socket)
+        this.generateIdentifier()
+
+        state(this, SessionState)
+
+        this.state().change('Unidentified')
 
         this.socket.on('message', message => {
-            if (message.command === 'pong') {
-                console.log(`Got pong: ${Date.now()}`)
-                setTimeout(() => {
-                    this.socket.sendMessage({ command: 'ping' })
-                }, 5000)
-            }
+            console.log(`got message w/ state: ${this.state()}`)
+            this.handleMessage(this, message)
         })
-
-        this.socket.sendMessage({ command: 'ping' })
+    }
+    close() {
+        this.socket.destroy()
     }
     async write(message) {
         return new Promise((resolve, reject) => {
@@ -26,6 +31,9 @@ class Session {
                 }
             })
         })
+    }
+    generateIdentifier() {
+        this.identifier = uuid()
     }
 }
 

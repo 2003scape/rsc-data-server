@@ -7,8 +7,7 @@
     "start": "node index",
     "build-db": "knex migrate:latest",
     "rollback-db": "knex migrate:rollback",
-    "add-node": "node scripts/add-node",
-    "generate-ssl-keys": "openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem"
+    "add-node": "node scripts/add-node"
   },
   "author": "2003Scape Team",
   "license": "AGPL-3.0+",
@@ -17,6 +16,7 @@
     "knex": "^0.19.5",
     "restify": "^8.4.0",
     "sqlite3": "^4.1.0",
+    "state": "^0.2.0",
     "uuid": "^3.3.3"
   },
   "repository": {
