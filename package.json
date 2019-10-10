@@ -13,6 +13,7 @@
   "author": "2003Scape Team",
   "license": "AGPL-3.0+",
   "dependencies": {
+    "json-socket": "^0.3.0",
     "knex": "^0.19.5",
     "restify": "^8.4.0",
     "sqlite3": "^4.1.0",

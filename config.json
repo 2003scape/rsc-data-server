@@ -1,12 +1,14 @@
 {
     "server": {
-        "port": 1234,
-        "ssl": {
-            "key": "localhost-privkey.pem",
-            "cert": "localhost-cert.pem"
+        "options": {
+            "host": "0.0.0.0",
+            "port": 1234
+        },
+        "ssl_": {
+            "key": "certs/server/server.key",
+            "cert": "certs/server/server.crt",
+            "ca": "certs/ca/ca.crt",
+            "requestCert": true
         }
-    },
-    "middleware": {
-        "key-header": "x-uuid-key"
     }
 }

@@ -1,5 +1,5 @@
 node_modules/
 package-lock.json
 rsc-data-server.sqlite
-localhost-cert.pem
-localhost-privkey.pem
+certs/
+
