@@ -14,7 +14,6 @@
   "dependencies": {
     "json-socket": "^0.3.0",
     "knex": "^0.19.5",
-    "restify": "^8.4.0",
     "sqlite3": "^4.1.0",
     "state": "^0.2.0",
     "uuid": "^3.3.3"

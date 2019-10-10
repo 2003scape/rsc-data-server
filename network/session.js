@@ -13,13 +13,10 @@ class Session {
 
         this.state().change('Unidentified')
 
-        this.socket.on('message', message => {
-            console.log(`got message w/ state: ${this.state()}`)
-            this.handleMessage(this, message)
-        })
+        this.socket.on('message', message => this.handleMessage(this, message))
     }
     close() {
-        this.socket.destroy()
+        this.socket.end()
     }
     async write(message) {
         return new Promise((resolve, reject) => {
@@ -34,6 +31,9 @@ class Session {
     }
     generateIdentifier() {
         this.identifier = uuid()
+    }
+    toString() {
+        return `session[${this.identifier}]`
     }
 }
 

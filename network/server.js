@@ -4,10 +4,19 @@ const tls = require('tls')
 
 const Session = require('./session')
 
-
 function connectionListener(server, socket) {
     const session = new Session(server, socket)
 
+    while (server.sessions.get(session.identifier)) {
+        session.generateIdentifier()
+    }
+
+    socket.on('close', () => {
+        server.sessions.delete(session.identifier)
+        // emit disconnect
+    })
+
+    server.sessions.set(session.identifier, session)
 }
 
 class Server {
@@ -17,6 +26,7 @@ class Server {
 
         this.config = config
         this.socket = pkg.createServer(listener)
+        this.sessions = new Map()
     }
     async bind() {
         return new Promise((resolve, reject) => {
