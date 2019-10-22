@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const readline = require('readline')
 const knex = require('knex')
 const uuid = require('uuid/v4')
@@ -12,7 +14,8 @@ const rl = readline.createInterface({
 
 async function main() {
     try {
-        const name = await input.ask(rl, 'What is the node\'s (unique) name? ')
+        const name = await input.ask(rl, 
+            'What is the node\'s (unique) name? (e.g. rsc-server:1): ')
         const desc = await input.ask(rl,
             'Give a brief description of the node (optional): ')
         const key = uuid()

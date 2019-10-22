@@ -1,8 +1,11 @@
 const fs = require('fs')
+const knex = require('knex')
 const net = require('net')
 const tls = require('tls')
 
 const Session = require('./session')
+
+const IS_DEV = process.env.NODE_ENV === 'development'
 
 function connectionListener(server, socket) {
     const session = new Session(server, socket)
@@ -20,14 +23,22 @@ function connectionListener(server, socket) {
 }
 
 class Server {
-    constructor(config) {
+    constructor(config, knexFile) {
         const listener = connectionListener.bind(null, this)
         const pkg = config.server.ssl ? tls : net
 
         this.config = config
+
+        this.db = knex(knexFile)
+
+        if (IS_DEV) {
+
+        }
+
         this.socket = pkg.createServer(listener)
         this.sessions = new Map()
     }
+
     async bind() {
         return new Promise((resolve, reject) => {
             try {
@@ -49,6 +60,7 @@ class Server {
             }
         })
     }
+
     async unbind() {
         return new Promise((resolve, reject) => {
             try {
@@ -57,6 +69,13 @@ class Server {
                 reject(error)
             }
         })
+    }
+
+    // send a message to each node
+    async broadcast(message) {
+        for (const id of Object.keys(this.sessions)) {
+            await this.sessions[id].write(message)
+        }
     }
 }
 

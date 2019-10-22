@@ -2,7 +2,12 @@
     "server": {
         "options": {
             "host": "0.0.0.0",
-            "port": 1234
+            "port": 1234,
+            "file": null,
+            "bcrypt": {
+                "passwordRounds": 12,
+                "recoveryRounds": 15
+            }
         },
         "ssl_": {
             "key": "certs/server/server.key",

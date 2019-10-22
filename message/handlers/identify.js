@@ -9,20 +9,22 @@ async function verifyKey(db, key) {
     return results.length > 0
 }
 
-module.exports.handler = (session, message) => new Promise(async (resolve, reject) => {
-    if (session.state() !== session.state('Unidentified')) {
-        return reject(new Error('invalid session state:', session.state()))
+module.exports.handler = async (session, message) => {
+    if (session.state !== 'unidentified') {
+        throw new Error('invalid session state:', session.state)
     }
+
     if (!message.hasOwnProperty('key')) {
-        return reject(new Error('identify message does not contain key'))
+        throw new Error('identify message does not contain key')
     }
 
     const verified = await verifyKey(session.server.db, message.key)
 
     if (!verified) {
-        return reject(new Error('invalid node key'))
+        throw new Error('invalid node key')
     }
 
-    session.state().change('Identified')
-    resolve()
-})
+    session.state = 'identified'
+
+    session.write({ type: 'identify', success: true })
+}

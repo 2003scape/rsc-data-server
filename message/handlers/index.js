@@ -11,10 +11,10 @@ fs.readdirSync(__dirname).forEach(file => {
     const handler = require(path.join(__dirname, file))
 
     if (handler) {
-        if (handlers.has(handler.name.toLowerCase())) {
+        if (handlers.has(handler.name)) {
             console.warn(`warning: duplicate msg handler for ${handler.name}`)
         }
-        handlers.set(handler.name.toLowerCase(), handler.handler)
+        handlers.set(handler.name, handler.handler)
     }
 })
 
