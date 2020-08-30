@@ -1,24 +1,25 @@
 {
-  "name": "rsc-data-server",
+  "name": "@2003scape/rsc-data-server",
   "version": "1.0.0",
   "description": "manage rsc-server worlds, player persistence, friends, etc.",
-  "main": "index.js",
+  "main": "./src/server.js",
+  "bin": {
+    "rsc-data-server": "./src/bin.js"
+  },
   "scripts": {
-    "start": "node index",
-    "build-db": "knex migrate:latest",
-    "rollback-db": "knex migrate:rollback",
-    "add-node": "node scripts/add-node"
+    "start": "./src/bin.js | garnish"
   },
   "author": "2003Scape Team",
   "license": "AGPL-3.0+",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "bole": "^4.0.0",
+    "garnish": "^5.2.0",
     "json-socket": "^0.3.0",
-    "knex": "^0.19.5",
-    "snakecase-keys": "^3.1.0",
-    "sqlite3": "^4.1.0",
-    "state": "^0.2.0",
-    "uuid": "^3.3.3"
+    "snakecase-keys": "^3.2.0",
+    "sqlite": "^4.0.14",
+    "sqlite3": "^5.0.0",
+    "yargs": "^15.4.1"
   },
   "repository": {
     "type": "git",

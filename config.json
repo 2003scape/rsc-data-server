@@ -1,19 +1,8 @@
 {
-    "server": {
-        "options": {
-            "host": "0.0.0.0",
-            "port": 1234,
-            "file": null,
-            "bcrypt": {
-                "passwordRounds": 12,
-                "recoveryRounds": 15
-            }
-        },
-        "ssl_": {
-            "key": "certs/server/server.key",
-            "cert": "certs/server/server.crt",
-            "ca": "certs/ca/ca.crt",
-            "requestCert": true
-        }
-    }
+    "sockFile": "/tmp/rsc-data-server.sock",
+    "port": 8001,
+    "password": "$2y$10$wufvP1CJMLYmBHKl2Ah2k.CGQwQV5aUMIcXrPNUfmqJ9ibNhhvFnS",
+    "passwordHashRounds": 12,
+    "recoveryHashRounds": 15,
+    "sqliteFile": "./rsc-data-server.sqlite"
 }
