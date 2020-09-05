@@ -28,13 +28,14 @@ $ rsc-data-server -c /etc/rsc-data-server/config.json
 ## configuration
 ```javascript
 {
-    "sockFile": "/tmp/rsc-data-server.sock" || null,
-    "port": 1331 || null,
-    "bcrypt": {
-        "passwordRounds": 12,
-        "recoveryRounds": 15
-    },
-    "sqliteFile": "./rsc-data-server.sqlite"
+    "sockFile": "/tmp/rsc-data-server.sock", // unix IPC socket files
+    "port": 8001, // optional TCP port
+    "sqliteFile": "./rsc-data-server.sqlite",
+    // default is "test"
+    "password": "$2y$10$wufvP1CJMLYmBHKl2Ah2k.CGQwQV5aUMIcXrPNUfmqJ9ibNhhvFnS",
+    "passwordHashRounds": 12,
+    "recoveryHashRounds": 15,
+    "playersPerIp": 1
 }
 ```
 
@@ -49,7 +50,15 @@ to be used.
 ```javascript
 {
     handler; 'authenticate',
-    password: ''
+    password: 'test'
+}
+```
+
+returns:
+```javascript
+{
+    success: true, // or false
+    error: '' // if success false
 }
 ```
 
@@ -60,9 +69,18 @@ initialize an rsc-server for players to login to.
 {
     handler; 'worldConnect',
     id: 1, // 1-254
-    port: 43594,
+    tcpPort: 43594,
+    websocketPort: 43595,
     members: false, // or true
     country: 'CAN' // ISO 3166-1 alpha-3
+}
+```
+
+returns:
+```javascript
+{
+    success: true, // or false
+    error: '' // if success false
 }
 ```
 
@@ -72,13 +90,14 @@ dropped.
 
 ```javascript
 {
-    type: 'worldDisconnect'
+    handler: 'worldDisconnect'
 }
 ```
 
 ### worldGetList
 get a list of worlds.
 
+returns:
 ```javascript
 [
     {
@@ -93,13 +112,24 @@ get a list of worlds.
 
 ### playerCount
 the total number of registered players.
+```javascript
+{
+    handler: 'playerCount'
+}
+```
 
 ### playerOnlineCount
 the number of players online in each world.
+```javascript
+{
+    handler: 'playerOnlineCount'
+}
+```
 
 ### playerRegister
 ```javascript
 {
+    handler: 'playerRegister'
     username: '',
     password: '',
     ip: ''
@@ -110,38 +140,35 @@ returns:
 ```javascript
 {
     success: true, // or false
-    registerCode: 0 // used in the client to display message
+    code: 0 // used in the client to display error message or indicate success
 }
 ```
 
 ### playerLogin
-checks if a player's credentials are correct and if they're allowed onto a
-certain world.
+checks if a player's credentials are correct and if they're allowed onto the
+world they're logging into (membership check).
 
 ```javascript
 {
+    handler: 'playerLogin',
     username: '',
     password: '',
-    world: 1 // up to 254
-}
-```
-
-### playerGetInfo
-get a player's skills, inventory, quest status, etc.
-
-```javascript
-{
-    handler: 'playerGetInfo',
-    username: ''
+    ip: ''
 }
 ```
 
 returns:
 ```javascript
 {
-    bank: [ { id: 10, amount: 1000 } ],
-    inventory: [ { id: 10, amount: 1000 } ],
-    skills: [], // etc.
+    success: true, // or false
+    code: 0 // similar to registration code
+    player: {
+        id: 1,
+        bank: [ { id: 10, amount: 1000 } ],
+        inventory: [ { id: 10, amount: 1000 } ],
+        skills: { attack: { current: 1, experience: 332 } },
+        // etc.
+    } // undefined if invalid credentials
 }
 ```
 
@@ -157,17 +184,25 @@ send a message to a player on another world.
 }
 ```
 
+returns:
+```javascript
+{
+    success: true, // or false
+    error: '' // if success false
+}
+```
+
 ## senders
 rsc-data-server sends these to certain (or all) clients with the each header
-corresponding to the `.type` property:
+corresponding to the `.handler` property:
 
 ### playerLogin
 sent to rsc-server instances when players login.
 
 ```javascript
 {
-    type: 'playerLogin',
-    username: "",
+    handler: 'playerLoggedIn',
+    username: '',
     world: 1 // up to 254
 }
 ```
@@ -178,9 +213,10 @@ resides in the `playerMessage` handler.
 
 ```javascript
 {
-    fromUsername: "",
-    toUsername: "",
-    message: ""
+    handler: 'playerMessage',
+    fromUsername: '',
+    toUsername: '',
+    message: ''
 }
 ```
 

@@ -1,6 +1,7 @@
 const handlers = [
     require('./authenticate'),
-    require('./player')
+    require('./player'),
+    require('./world')
 ];
 
 const handlerMethods = {};
@@ -11,4 +12,4 @@ for (const handler of handlers) {
     }
 }
 
-module.exports  = handlerMethods;
+module.exports = handlerMethods;

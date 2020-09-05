@@ -1,8 +1,9 @@
 {
     "sockFile": "/tmp/rsc-data-server.sock",
     "port": 8001,
+    "sqliteFile": "./rsc-data-server.sqlite",
     "password": "$2y$10$wufvP1CJMLYmBHKl2Ah2k.CGQwQV5aUMIcXrPNUfmqJ9ibNhhvFnS",
     "passwordHashRounds": 12,
     "recoveryHashRounds": 15,
-    "sqliteFile": "./rsc-data-server.sqlite"
+    "playersPerIp": 1
 }

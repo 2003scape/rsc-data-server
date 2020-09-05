@@ -22,10 +22,9 @@ const argv = yargs
         type: 'string',
         describe: 'the logging verbosity level',
         default: 'info',
-        choices: [ 'debug', 'info', 'warn', 'error' ]
+        choices: ['debug', 'info', 'warn', 'error']
     })
-    .version(pkg.version)
-    .argv;
+    .version(pkg.version).argv;
 
 bole.output({
     level: argv.verbose,

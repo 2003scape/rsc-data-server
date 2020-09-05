@@ -11,6 +11,7 @@ class Client {
     constructor(server, socket) {
         this.server = server;
         this.socket = new JSONSocket(socket);
+
         this.authenticated = false;
         this.handlers = {};
 
@@ -25,17 +26,19 @@ class Client {
             this.socket.end();
         }, 10000);
 
-        this.socket.on('error', err => log.error(err));
+        this.socket.on('error', (err) => log.error(err));
 
-        this.socket.on('message', async message => {
+        this.socket.on('message', async (message) => {
             if (!this.authenticated && message.handler !== 'authenticate') {
                 log.warn(`${this} sending commands before authenticating`);
                 return;
             }
 
             if (!this.handlers[message.handler]) {
-                log.warn(`${this} trying to used undefined handler ` +
-                    message.handler);
+                log.warn(
+                    `${this} trying to used undefined handler ` +
+                        message.handler
+                );
                 return;
             }
 
@@ -54,12 +57,22 @@ class Client {
         this.socket.on('end', () => {
             log.info(`${this} disconnected`);
             this.server.clients.delete(this);
+
+            if (this.world) {
+                this.server.removeWorld(this.world);
+            }
         });
     }
 
     async login(password) {
-        this.authenticated = await bcryptCompare(password,
-            this.server.config.password);
+        this.authenticated = await bcryptCompare(
+            password,
+            this.server.config.password
+        );
+    }
+
+    getIP() {
+        return this.socket.remoteAddress || '127.0.0.1';
     }
 
     toString() {

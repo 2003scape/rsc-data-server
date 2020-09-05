@@ -2,32 +2,29 @@
 
 const log = require('bole')('authenticate');
 
-async function authenticate(message) {
-    const token = message.token;
+async function authenticate({token, password}) {
+    const message = {token};
 
     if (this.authenticated) {
-        this.socket.sendMessage({
-            token,
-            success: false,
-            message: 'already authenticated'
-        });
-
-        return;
+        message.success = false;
+        message.error = 'already authenticated';
+        return this.socket.sendMessage(message);
     }
 
-    await this.login(message.password);
+    await this.login(password);
 
     if (!this.authenticated) {
-        this.socket.sendMessage({
-            token,
-            success: false,
-            message: 'invalid password'
-        });
+        message.success = false;
+        message.error = 'invalid password';
+        return this.socket.sendMessage(message);
     } else {
         clearTimeout(this.authenticateTimeout);
+
         log.info(`new client ${this} authenticated`);
-        this.socket.sendMessage({ token, success: true });
         this.server.clients.add(this);
+
+        message.success = true;
+        this.socket.sendMessage(message);
     }
 }
 
