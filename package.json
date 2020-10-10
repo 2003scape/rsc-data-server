@@ -7,7 +7,7 @@
     "rsc-data-server": "./src/bin.js"
   },
   "scripts": {
-    "start": "./src/bin.js | garnish"
+    "start": "./src/bin.js -v debug | garnish"
   },
   "author": "2003Scape Team",
   "license": "AGPL-3.0+",
@@ -16,6 +16,7 @@
     "bole": "^4.0.0",
     "camelcase-keys": "^6.2.2",
     "json-socket": "^0.3.0",
+    "sleep-promise": "^8.0.1",
     "snakecase-keys": "^3.2.0",
     "sqlite": "^4.0.14",
     "sqlite3": "^5.0.0",

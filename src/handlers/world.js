@@ -27,7 +27,7 @@ async function worldConnect(world) {
         tcpPort: world.tcpPort,
         websocketPort: world.websocketPort,
         country: world.country.toUpperCase(),
-        members: world.members,
+        members: world.members
     });
 
     this.world = new World(this, id, members);
@@ -48,7 +48,7 @@ async function worldGetList({ token }) {
     const queryHandler = this.server.queryHandler;
     const message = { token };
 
-    const worlds = (await queryHandler.getWorlds()).map(world => {
+    const worlds = (await queryHandler.getWorlds()).map((world) => {
         const worldInstance = this.server.worlds[world.id];
 
         if (worldInstance) {

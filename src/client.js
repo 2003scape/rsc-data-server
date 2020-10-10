@@ -21,9 +21,11 @@ class Client {
     }
 
     init() {
+        log.info(`${this} connected`);
+
         this.authenticateTimeout = setTimeout(() => {
             log.warn(`${this} took too long to authenticate`);
-            this.socket.end();
+            this.socket._socket.destroy();
         }, 10000);
 
         this.socket.on('error', (err) => log.error(err));
@@ -54,7 +56,7 @@ class Client {
             }
         });
 
-        this.socket.on('end', () => {
+        this.socket.on('close', () => {
             log.info(`${this} disconnected`);
             this.server.clients.delete(this);
 

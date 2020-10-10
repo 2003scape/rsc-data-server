@@ -1,9 +1,10 @@
 {
     "sockFile": "/tmp/rsc-data-server.sock",
-    "port": 8001,
+    "port": null,
     "sqliteFile": "./rsc-data-server.sqlite",
+    "backupDirectory": "./backups",
     "password": "$2y$10$wufvP1CJMLYmBHKl2Ah2k.CGQwQV5aUMIcXrPNUfmqJ9ibNhhvFnS",
-    "passwordHashRounds": 12,
+    "passwordHashRounds": 10,
     "recoveryHashRounds": 15,
-    "playersPerIp": 1
+    "playersPerIP": 1
 }

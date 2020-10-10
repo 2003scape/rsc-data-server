@@ -22,9 +22,9 @@ const SET_PLAYER_ATTRIBUTES = [
     'camera_auto',
     'one_mouse_button',
     'sound_on',
-    'hair_color',
-    'top_color',
-    'leg_color',
+    'hair_colour',
+    'top_colour',
+    'trouser_colour',
     'head_sprite',
     'body_sprite',
     'skulled',
@@ -49,7 +49,7 @@ class QueryHandler {
     async init() {
         this.statements = {
             resetLoggedIn:
-                'UPDATE `players` SET `world` = 0, ' + '`login_ip` = NULL',
+                'UPDATE `players` SET `world` = 0, `login_ip` = NULL',
             usernameExists: 'SELECT 1 FROM `players` WHERE `username` = ?',
             lastCreationDate:
                 'SELECT `creation_date` FROM `players` ' +
@@ -68,18 +68,28 @@ class QueryHandler {
             setPlayerBan:
                 'UPDATE `players` SET `ban_end_date` = ? WHERE ' +
                 '`username` = ?',
+            setPlayerPassword:
+                'UPDATE `players` SET `password` = ? WHERE `username` = ?',
             getPlayer:
                 'SELECT ' +
                 GET_PLAYER_ATTRIBUTES.map((attr) => `\`${attr}\``).join(', ') +
                 'FROM `players` WHERE `username` = ?',
             updatePlayerLogin:
-                'UPDATE `players` SET `login_date` = ? WHERE `id` = ?',
+                'UPDATE `players` SET `login_date` = ?, `login_ip` = ? ' +
+                'WHERE `id` = ?',
+            getLoginAttempts:
+                'SELECT `attempts`, `last_attempt_date` FROM ' +
+                '`login_attempts` WHERE `ip` = ?',
+            setLoginAttempts:
+                'INSERT OR REPLACE INTO `login_attempts` (`ip` ,`attempts`, ' +
+                '`last_attempt_date`) VALUES(:ip, :attempts, ' +
+                ':last_attempt_date)',
             updatePlayer:
                 'UPDATE `players` SET ' +
-                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`).join(
-                    ', '
-                ) +
-                'WHERE `id` = :id',
+                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`)
+                    .join(', ')
+                    .slice(0, -2) +
+                ' WHERE `id` = :id',
             insertWorld:
                 'INSERT OR REPLACE INTO `worlds` (`id`, `ip`, ' +
                 '`tcp_port`, `websocket_port`, `country`, `members`) ' +
@@ -195,6 +205,14 @@ class QueryHandler {
         await statement.reset();
     }
 
+    async setPlayerPassword(username, password) {
+        const statement = this.statements.setPlayerPassword;
+
+        await statement.bind([password, username]);
+        await statement.run();
+        await statement.reset();
+    }
+
     async getPlayer(username) {
         const statement = this.statements.getPlayer;
 
@@ -221,16 +239,44 @@ class QueryHandler {
         player.bank = JSON.parse(player.bank);
         player.questStages = JSON.parse(player.questStages);
         player.cache = JSON.parse(player.cache);
+        player.loginIP = player.loginIp;
+        delete player.loginIp;
 
         await statement.reset();
 
         return player;
     }
 
-    async updatePlayerLogin(playerID, date) {
+    async updatePlayerLogin(playerID, date, ip) {
         const statement = this.statements.updatePlayerLogin;
 
-        await statement.bind([playerID, date]);
+        await statement.bind([date, ip, playerID]);
+        await statement.run();
+        await statement.reset();
+    }
+
+    async getLoginAttempts(ip) {
+        const statement = this.statements.getLoginAttempts;
+
+        await statement.bind(ip);
+        const entry = await statement.get();
+
+        const attempts = entry ? entry.attempts : 0;
+        const lastDate = entry ? entry['last_attempt_date'] : Date.now();
+
+        await statement.reset();
+
+        return { attempts, lastDate };
+    }
+
+    async setLoginAttempts(ip, attempts) {
+        const statement = this.statements.setLoginAttempts;
+
+        await statement.bind({
+            ':ip': ip,
+            ':attempts': attempts,
+            ':last_attempt_date': Date.now()
+        });
         await statement.run();
         await statement.reset();
     }

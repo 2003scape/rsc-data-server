@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const log = require('bole')('player');
 const promisify = require('util').promisify;
+const sleep = require('sleep-promise');
 
 const bcryptCompare = promisify(bcrypt.compare);
 const bcryptHash = promisify(bcrypt.hash);
@@ -32,24 +33,57 @@ async function playerGetWorlds({ token, usernames }) {
     this.socket.sendMessage({ token, usernameWorlds });
 }
 
-async function playerLogin({ token, username, password, ip }) {
+async function playerLogin({ token, username, password, ip, reconnecting }) {
+    const message = { token };
+
     if (!this.world) {
         log.warn(`${this} trying to login before connected to world`);
-        this.socket.end();
+        message.code = 9;
+        message.success = false;
+        this.socket.sendMessage(message);
         return;
     }
 
     username = username.toLowerCase();
 
     const queryHandler = this.server.queryHandler;
-    const message = { token };
+
+    let { attempts, lastDate } = await queryHandler.getLoginAttempts(ip);
+
+    if (attempts >= 5) {
+        if ((Date.now() - lastDate) >= 1000 * 60 * 5) {
+            await queryHandler.setLoginAttempts(ip, 0);
+            attempts = 0;
+        } else {
+            message.code = 7;
+            message.success = false;
+            this.socket.sendMessage(message);
+            return;
+        }
+    }
+
+    await sleep(attempts * 1000);
 
     const hash = await queryHandler.getPlayerPassword(username);
 
     if (!hash || !(await bcryptCompare(password, hash))) {
         message.code = 3;
         message.success = false;
+        await queryHandler.setLoginAttempts(ip, attempts + 1);
         return this.socket.sendMessage(message);
+    }
+
+    const rounds = bcrypt.getRounds(hash);
+    const passwordHashRounds = this.server.config.passwordHashRounds;
+
+    if (rounds < passwordHashRounds) {
+        log.debug(
+            `re-hashing ${username} password from ${rounds} rounds to ` +
+            `${passwordHashRounds} rounds`
+        );
+
+        const newHash = await bcryptHash(password, passwordHashRounds);
+        await queryHandler.setPlayerPassword(username, newHash);
     }
 
     const isLoggedIn = this.server.getPlayerWorld(username) !== 0;
@@ -62,7 +96,7 @@ async function playerLogin({ token, username, password, ip }) {
 
     const ipLoginCount = await queryHandler.getPlayerLoginCount(ip);
 
-    if (ipLoginCount >= this.server.config.playersPerIp) {
+    if (ipLoginCount >= this.server.config.playersPerIP) {
         message.code = 6;
         message.success = false;
         return this.socket.sendMessage(message);
@@ -99,10 +133,16 @@ async function playerLogin({ token, username, password, ip }) {
     }
 
     const player = await queryHandler.getPlayer(username);
-    await queryHandler.updatePlayerLogin(player.id, Date.now());
+    await queryHandler.updatePlayerLogin(player.id, Date.now(), ip);
 
     message.success = true;
     message.player = player;
+
+    if (reconnecting) {
+        message.code = 1;
+    } else {
+        message.code = player.rank > 0 ? 25 : 0;
+    }
 
     this.server.totalPlayers += 1;
     this.world.players.set(username, player.id);
@@ -124,7 +164,7 @@ async function playerLogout({ token, username }) {
     this.server.broadcastToWorlds({
         token,
         handler: 'playerLoggedOut',
-        username: username
+        username
     });
 }
 
@@ -132,9 +172,17 @@ async function playerRegister({ token, username, password, ip }) {
     const queryHandler = this.server.queryHandler;
     const message = { token };
 
+    const ipLoginCount = await queryHandler.getPlayerLoginCount(ip);
+
+    if (ipLoginCount >= this.server.config.playersPerIP) {
+        message.code = 6;
+        message.success = false;
+        return this.socket.sendMessage(message);
+    }
+
     const lastCreationDate = await queryHandler.lastCreationDate(ip);
 
-    if (Date.now() - lastCreationDate < 1000 * 60 * 60) {
+    if (Date.now() - lastCreationDate < 1000 * 60 * 5) {
         message.code = 7;
         message.success = false;
         return this.socket.sendMessage(message);
@@ -151,13 +199,14 @@ async function playerRegister({ token, username, password, ip }) {
         this.server.config.passwordHashRounds
     );
 
-    log.debug(`${this} registered player "${username}" from ${ip}`);
-
     await queryHandler.insertPlayer({ username, password, ip });
 
     message.code = 2;
     message.success = true;
     this.socket.sendMessage(message);
+
+    log.info(`${this} registered player "${username}" from ${ip}`);
+
 }
 
 async function playerUpdate(player) {

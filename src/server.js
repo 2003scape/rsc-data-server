@@ -10,6 +10,9 @@ const log = require('bole')('server');
 // 3 hours
 const HISCORE_FREQUENCY = 1000 * 60 * 60 * 3;
 
+// 10 minutes
+const THROTTLE_CLEAR_FREQUENCY = 1000 * 60 * 10;
+
 class Server {
     constructor(config) {
         this.config = config;
@@ -51,12 +54,12 @@ class Server {
     }
 
     addWorld(world) {
-        log.info(`world ${world.id} online`);
+        log.info(`world ${world} online`);
         this.worlds[world.id] = world;
     }
 
     removeWorld(world) {
-        log.info(`world ${world.id} offline`);
+        log.info(`world ${world} offline`);
         this.totalPlayers -= world.players.length;
         delete this.worlds[world.id];
     }
@@ -76,6 +79,11 @@ class Server {
     async updateHiscoreRanks() {
         log.info('updating hiscore ranks...');
         setTimeout(this._updateHiscoreRanks, HISCORE_FREQUENCY);
+    }
+
+    async resetLoginAttempts() {
+        log.info('clearing old login attempts...');
+        setTimeout(this._updateHiscoreRanks, THROTTLE_CLEAR_FREQUENCY);
     }
 
     listen() {
@@ -111,6 +119,7 @@ class Server {
         try {
             await this.queryHandler.sync();
             await this.updateHiscoreRanks();
+            await this.resetLoginAttempts();
         } catch (e) {
             log.error(e);
         }
