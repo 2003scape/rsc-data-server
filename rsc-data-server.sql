@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `players` (
     `fatigue` integer default '0',
     `combat_style` integer default '0',
     `block_chat` boolean default '0',
-    `block_private` boolean default '0',
+    `block_private_chat` boolean default '0',
     `block_trade` boolean default '0',
     `block_duel` boolean default '0',
     `camera_auto` boolean default '1',
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS `players` (
     `rank_attack` integer default '0',
     `rank_defence` integer default '0',
     `rank_strength` integer default '0',
-    `rank_hits` integer default '10',
+    `rank_hits` integer default '0',
     `rank_ranged` integer default '0',
     `rank_prayer` integer default '0',
     `rank_magic` integer default '0',
@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `players` (
     `rank_herblaw` integer default '0',
     `rank_agility` integer default '0',
     `rank_thieving` integer default '0',
+    `rank_total` integer default '0',
     `recovery` json default '{}',
     `friends` json default '[]',
     `ignores` json default '[]',
@@ -98,11 +99,23 @@ CREATE TABLE IF NOT EXISTS `players` (
     `mute_end_date` datetime default '0',
     `membership_end_date` datetime default '0',
     `quest_stages` json default '{}',
-    `cache` json default '{}'
+    `cache` json default '{"sendAppearance": true}'
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS `players_username_unique` on `players`
 (`username`);
+
+CREATE TABLE IF NOT EXISTS `player_messages` (
+    `id` integer not null primary key autoincrement,
+    `to_player` integer not null REFERENCES `players`,
+    `from` varchar(255),
+    `subject` varchar(255),
+    `date` datetime default (strftime('%s', 'now')),
+    `unread` boolean default '1',
+    `message` TEXT
+);
+
+CREATE INDEX IF NOT EXISTS `to_player_index` ON `player_messages` (`to_player`);
 
 CREATE TABLE IF NOT EXISTS `login_attempts` (
     `id` integer not null primary key autoincrement,

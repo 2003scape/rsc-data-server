@@ -44,6 +44,7 @@ class Server {
         }
 
         this._updateHiscoreRanks = this.updateHiscoreRanks.bind(this);
+        this._resetLoginAttempts = this.resetLoginAttempts.bind(this);
     }
 
     broadcastToWorlds(message) {
@@ -58,10 +59,11 @@ class Server {
         this.worlds[world.id] = world;
     }
 
-    removeWorld(world) {
+    async removeWorld(world) {
         log.info(`world ${world} offline`);
         this.totalPlayers -= world.players.length;
         delete this.worlds[world.id];
+        await this.queryHandler.resetLoggedInWorld(world.id);
     }
 
     getPlayerWorld(username) {
@@ -83,7 +85,8 @@ class Server {
 
     async resetLoginAttempts() {
         log.info('clearing old login attempts...');
-        setTimeout(this._updateHiscoreRanks, THROTTLE_CLEAR_FREQUENCY);
+        await this.queryHandler.resetLoginAttempts();
+        setTimeout(this._resetLoginAttempts, THROTTLE_CLEAR_FREQUENCY);
     }
 
     listen() {

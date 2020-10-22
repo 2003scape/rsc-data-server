@@ -21,6 +21,9 @@ async function worldConnect(world) {
         return this.socket.sendMessage(message);
     }
 
+    this.world = new World(this, id, members);
+    await this.server.addWorld(this.world);
+
     await queryHandler.insertWorld({
         id: world.id,
         ip: this.getIP(),
@@ -30,16 +33,13 @@ async function worldConnect(world) {
         members: world.members
     });
 
-    this.world = new World(this, id, members);
-    this.server.addWorld(this.world);
-
     message.success = true;
     this.socket.sendMessage(message);
 }
 
 async function worldDisconnect() {
     if (this.world) {
-        this.server.removeWorld(this.world);
+        await this.server.removeWorld(this.world);
     }
 }
 

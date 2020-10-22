@@ -40,8 +40,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         log.warn(`${this} trying to login before connected to world`);
         message.code = 9;
         message.success = false;
-        this.socket.sendMessage(message);
-        return;
+        return this.socket.sendMessage(message);
     }
 
     username = username.toLowerCase();
@@ -51,7 +50,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     let { attempts, lastDate } = await queryHandler.getLoginAttempts(ip);
 
     if (attempts >= 5) {
-        if ((Date.now() - lastDate) >= 1000 * 60 * 5) {
+        if (Date.now() - lastDate >= 1000 * 60 * 5) {
             await queryHandler.setLoginAttempts(ip, 0);
             attempts = 0;
         } else {
@@ -79,7 +78,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     if (rounds < passwordHashRounds) {
         log.debug(
             `re-hashing ${username} password from ${rounds} rounds to ` +
-            `${passwordHashRounds} rounds`
+                `${passwordHashRounds} rounds`
         );
 
         const newHash = await bcryptHash(password, passwordHashRounds);
@@ -121,19 +120,23 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     }
 
     if (this.world.members) {
-        const membershipEndDate = await queryHandler.getPlayerMembershipEnd(
+        /*const membershipEndDate = await queryHandler.getPlayerMembershipEnd(
             username
         );
 
-        if (membershipEndDate < Date.now()) {
+        if (membershipEndDate < Math.floor(Date.now() / 1000)) {
             message.code = 15;
             message.success = false;
             return this.socket.sendMessage(message);
-        }
+        }*/
     }
 
     const player = await queryHandler.getPlayer(username);
-    await queryHandler.updatePlayerLogin(player.id, Date.now(), ip);
+    await queryHandler.updatePlayerLogin(
+        player.id,
+        Math.floor(Date.now() / 1000),
+        ip
+    );
 
     message.success = true;
     message.player = player;
@@ -147,10 +150,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     this.server.totalPlayers += 1;
     this.world.players.set(username, player.id);
 
-    this.server.broadcastToWorlds({
-        handler: 'playerLoggedIn',
-        username: username
-    });
+    this.server.broadcastToWorlds({ handler: 'playerLoggedIn', username });
 
     this.socket.sendMessage(message);
 }
@@ -159,7 +159,7 @@ async function playerLogout({ token, username }) {
     username = username.toLowerCase();
 
     this.server.totalPlayers -= 1;
-    this.world.players.remove(username);
+    this.world.players.delete(username);
 
     this.server.broadcastToWorlds({
         token,
@@ -169,8 +169,16 @@ async function playerLogout({ token, username }) {
 }
 
 async function playerRegister({ token, username, password, ip }) {
-    const queryHandler = this.server.queryHandler;
     const message = { token };
+
+    if (!this.world) {
+        log.warn(`${this} trying to register before connected to world`);
+        message.code = 9;
+        message.success = false;
+        return this.socket.sendMessage(message);
+    }
+
+    const queryHandler = this.server.queryHandler;
 
     const ipLoginCount = await queryHandler.getPlayerLoginCount(ip);
 
@@ -206,7 +214,6 @@ async function playerRegister({ token, username, password, ip }) {
     this.socket.sendMessage(message);
 
     log.info(`${this} registered player "${username}" from ${ip}`);
-
 }
 
 async function playerUpdate(player) {
@@ -214,6 +221,8 @@ async function playerUpdate(player) {
     const message = { token: player.token };
 
     delete player.token;
+    delete player.handler;
+
     await queryHandler.updatePlayer(player);
 
     message.success = true;

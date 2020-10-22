@@ -1,14 +1,14 @@
+const camelCaseKeys = require('camelcase-keys');
 const fs = require('fs');
+const log = require('bole')('query-handler');
 const skills = require('./skills');
 const snakeCaseKeys = require('snakecase-keys');
-const camelCaseKeys = require('camelcase-keys');
 
 const CREATE_TABLES = fs
     .readFileSync(`${__dirname}/../rsc-data-server.sql`)
     .toString();
 
 const SET_PLAYER_ATTRIBUTES = [
-    'username',
     'rank',
     'x',
     'y',
@@ -16,7 +16,7 @@ const SET_PLAYER_ATTRIBUTES = [
     'fatigue',
     'combat_style',
     'block_chat',
-    'block_private',
+    'block_private_chat',
     'block_trade',
     'block_duel',
     'camera_auto',
@@ -32,24 +32,34 @@ const SET_PLAYER_ATTRIBUTES = [
     'ignores',
     'inventory',
     'bank',
-    'login_ip',
     'quest_stages',
     'cache',
+    'mute_end_date',
     ...skills.map((skill) => `exp_${skill}`),
     ...skills.map((skill) => `cur_${skill}`)
 ];
 
-const GET_PLAYER_ATTRIBUTES = SET_PLAYER_ATTRIBUTES.concat('id', 'login_date');
+const GET_PLAYER_ATTRIBUTES = SET_PLAYER_ATTRIBUTES.concat(
+    'id',
+    'username',
+    'login_date',
+    'login_ip'
+);
 
 class QueryHandler {
     constructor(database) {
         this.database = database;
+
+        this.database.on('trace', (query) => {
+            log.debug(query);
+        });
     }
 
     async init() {
         this.statements = {
-            resetLoggedIn:
-                'UPDATE `players` SET `world` = 0, `login_ip` = NULL',
+            resetLoggedIn: 'UPDATE `players` SET `world` = 0',
+            resetLoggedInWorld:
+                'UPDATE `players` SET `world` = 0 WHERE `world` = ?',
             usernameExists: 'SELECT 1 FROM `players` WHERE `username` = ?',
             lastCreationDate:
                 'SELECT `creation_date` FROM `players` ' +
@@ -59,15 +69,15 @@ class QueryHandler {
                 'INSERT INTO `players` (`username`, `password`, ' +
                 '`creation_ip`) VALUES (:username, :password, :ip)',
             getPlayerPassword:
-                'SELECT `password` FROM `players` WHERE ' + '`username` = ?',
+                'SELECT `password` FROM `players` WHERE `username` = ?',
             getPlayerLoginCount:
-                'SELECT COUNT(1) FROM `players` WHERE ' + '`login_ip` = ?',
+                'SELECT COUNT(1) FROM `players` WHERE `login_ip` = ? AND ' +
+                '`world` != 0',
             getPlayerBanEnd:
                 'SELECT `ban_end_date` FROM `players` WHERE ' +
                 '`username` = ?',
             setPlayerBan:
-                'UPDATE `players` SET `ban_end_date` = ? WHERE ' +
-                '`username` = ?',
+                'UPDATE `players` SET `ban_end_date` = ? WHERE `username` = ?',
             setPlayerPassword:
                 'UPDATE `players` SET `password` = ? WHERE `username` = ?',
             getPlayer:
@@ -84,11 +94,13 @@ class QueryHandler {
                 'INSERT OR REPLACE INTO `login_attempts` (`ip` ,`attempts`, ' +
                 '`last_attempt_date`) VALUES(:ip, :attempts, ' +
                 ':last_attempt_date)',
+            resetLoginAttempts:
+                'DELETE FROM `login_attempts` WHERE `last_attempt_date` <= ?',
             updatePlayer:
                 'UPDATE `players` SET ' +
-                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`)
-                    .join(', ')
-                    .slice(0, -2) +
+                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`).join(
+                    ', '
+                ) +
                 ' WHERE `id` = :id',
             insertWorld:
                 'INSERT OR REPLACE INTO `worlds` (`id`, `ip`, ' +
@@ -97,6 +109,8 @@ class QueryHandler {
                 ':members)',
             getWorlds: 'SELECT * FROM `worlds`'
         };
+
+        console.log(this.statements.updatePlayer);
 
         for (const statementName of Object.keys(this.statements)) {
             this.statements[statementName] = await this.database.prepare(
@@ -107,6 +121,13 @@ class QueryHandler {
 
     async createTables() {
         await this.database.exec(CREATE_TABLES);
+    }
+
+    async resetLoggedInWorld(world) {
+        const statement = this.statements.resetLoggedInWorld;
+
+        await statement.run(world);
+        await statement.reset();
     }
 
     async usernameExists(username) {
@@ -250,8 +271,7 @@ class QueryHandler {
     async updatePlayerLogin(playerID, date, ip) {
         const statement = this.statements.updatePlayerLogin;
 
-        await statement.bind([date, ip, playerID]);
-        await statement.run();
+        await statement.run([date, ip, playerID]);
         await statement.reset();
     }
 
@@ -272,12 +292,18 @@ class QueryHandler {
     async setLoginAttempts(ip, attempts) {
         const statement = this.statements.setLoginAttempts;
 
-        await statement.bind({
+        await statement.run({
             ':ip': ip,
             ':attempts': attempts,
-            ':last_attempt_date': Date.now()
+            ':last_attempt_date': Math.floor(Date.now() / 1000)
         });
-        await statement.run();
+
+        await statement.reset();
+    }
+
+    async resetLoginAttempts() {
+        const statement = this.statements.resetLoginAttempts;
+        await statement.run(Math.floor((Date.now() - 1000 * 60 * 5) / 1000));
         await statement.reset();
     }
 
@@ -287,8 +313,9 @@ class QueryHandler {
         for (const skill of skills) {
             player[`cur_${skill}`] = player.skills[skill].current;
             player[`exp_${skill}`] = player.skills[skill].experience;
-            delete player.skills[skill];
         }
+
+        delete player.skills;
 
         player.friends = JSON.stringify(player.friends);
         player.ignores = JSON.stringify(player.ignores);
@@ -304,8 +331,7 @@ class QueryHandler {
             delete player[attr];
         }
 
-        await statement.bind(player);
-        await statement.run();
+        await statement.run(player);
         await statement.reset();
     }
 
@@ -318,8 +344,7 @@ class QueryHandler {
             delete world[key];
         }
 
-        await statement.bind(world);
-        await statement.run();
+        await statement.run(world);
         await statement.reset();
     }
 

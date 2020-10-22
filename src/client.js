@@ -56,12 +56,12 @@ class Client {
             }
         });
 
-        this.socket.on('close', () => {
+        this.socket.on('close', async () => {
             log.info(`${this} disconnected`);
             this.server.clients.delete(this);
 
             if (this.world) {
-                this.server.removeWorld(this.world);
+                await this.server.removeWorld(this.world);
             }
         });
     }
