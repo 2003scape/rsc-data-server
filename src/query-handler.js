@@ -25,6 +25,7 @@ const SET_PLAYER_ATTRIBUTES = [
     'hair_colour',
     'top_colour',
     'trouser_colour',
+    'skin_colour',
     'head_sprite',
     'body_sprite',
     'skulled',

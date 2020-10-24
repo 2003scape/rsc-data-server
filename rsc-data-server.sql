@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `players` (
     `hair_colour` integer default '2',
     `top_colour` integer default '8',
     `trouser_colour` integer default '14',
+    `skin_colour` integer default '0',
     `head_sprite` integer default '1',
     `body_sprite` integer default '2',
     `skulled` integer default '0',
