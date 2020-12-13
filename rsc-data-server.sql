@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `worlds` (
 
 CREATE TABLE IF NOT EXISTS `players` (
     `id` integer not null primary key autoincrement,
-    `username` varchar(12),
+    `username` varchar(12) collate nocase,
     `rank` integer default '0',
     `password` char(60),
     `x` integer default '122',

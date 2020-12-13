@@ -64,7 +64,7 @@ class QueryHandler {
             usernameExists: 'SELECT 1 FROM `players` WHERE `username` = ?',
             lastCreationDate:
                 'SELECT `creation_date` FROM `players` ' +
-                'WHERE `creation_ip` = ?',
+                'WHERE `creation_ip` = ? ORDER BY `creation_date` DESC LIMIT 1',
             getPlayerCount: 'SELECT COUNT(1) FROM `players`',
             insertPlayer:
                 'INSERT INTO `players` (`username`, `password`, ' +
@@ -110,8 +110,6 @@ class QueryHandler {
                 ':members)',
             getWorlds: 'SELECT * FROM `worlds`'
         };
-
-        console.log(this.statements.updatePlayer);
 
         for (const statementName of Object.keys(this.statements)) {
             this.statements[statementName] = await this.database.prepare(

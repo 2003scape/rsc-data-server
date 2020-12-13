@@ -8,6 +8,14 @@ to communicate with rsc-server over TCP or UNIX file sockets for IPC.
 
     # npm install @2003scape/rsc-data-server # -g for the CLI program
 
+## cli usage
+`-c <config-file>` is optional, rsc-data-server will look for *config.json* in
+its own directory first.
+
+```
+$ rsc-data-server -c /etc/rsc-data-server/config.json
+```
+
 ## usage
 ```javascript
 const Server = require('@2003scape/rsc-data-server');
@@ -20,12 +28,7 @@ const fs = require('fs').promises;
 })();
 ```
 
-## cli usage
-```
-$ rsc-data-server -c /etc/rsc-data-server/config.json
-```
-
-## configuration
+## config.json
 ```javascript
 {
     "sockFile": "/tmp/rsc-data-server.sock", // unix IPC socket files
@@ -126,6 +129,25 @@ the number of players online in each world.
 }
 ```
 
+### playerGetWorlds
+return world ids (or 0 if offline) for a list of players.
+```javascript
+{
+    handler: 'playerGetWorlds',
+    usernames: ['andrew', 'paul']
+}
+```
+
+returns:
+```javascript
+{
+    usernameWorlds: {
+        andrew: 1,
+        paul: 2
+    }
+}
+```
+
 ### playerRegister
 ```javascript
 {
@@ -144,7 +166,7 @@ returns:
 }
 ```
 
-### playerLogin
+### playerLogIn
 checks if a player's credentials are correct and if they're allowed onto the
 world they're logging into (membership check).
 
@@ -172,6 +194,28 @@ returns:
 }
 ```
 
+### playerLogOut
+broadcast a player logout to each world.
+
+```javascript
+{
+    handler: 'playerLogout',
+    username: ''
+}
+```
+
+### playerWorldChange
+used for switching appearance of world (to offline if blocking private chat for
+example).
+
+```javascript
+{
+    handler: 'playerWorldChange',
+    username: '',
+    world: 1
+}
+```
+
 ### playerMessage
 send a message to a player on another world.
 
@@ -196,7 +240,7 @@ returns:
 rsc-data-server sends these to certain (or all) clients with the each header
 corresponding to the `.handler` property:
 
-### playerLogin
+### playerLoggedIn
 sent to rsc-server instances when players login.
 
 ```javascript
@@ -204,6 +248,27 @@ sent to rsc-server instances when players login.
     handler: 'playerLoggedIn',
     username: '',
     world: 1 // up to 254
+}
+```
+
+### playerLoggedOut
+sent to rsc-server instances when players logout
+
+```javascript
+{
+    handler: 'playerLoggedOut',
+    username: ''
+}
+```
+
+### playerWorldChange
+sent to rsc-server instances when players change world appearance.
+
+```javascript
+{
+    handler: 'playerWorldChange',
+    username: '',
+    world: 1
 }
 ```
 

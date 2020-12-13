@@ -63,7 +63,12 @@ class Server {
         log.info(`world ${world} offline`);
         this.totalPlayers -= world.players.length;
         delete this.worlds[world.id];
-        await this.queryHandler.resetLoggedInWorld(world.id);
+
+        try {
+            await this.queryHandler.resetLoggedInWorld(world.id);
+        } catch (e) {
+            log.error(e);
+        }
     }
 
     getPlayerWorld(username) {
@@ -71,7 +76,7 @@ class Server {
             const world = this.worlds[id];
 
             if (world.players.has(username)) {
-                return id;
+                return +id;
             }
         }
 
@@ -85,7 +90,13 @@ class Server {
 
     async resetLoginAttempts() {
         log.info('clearing old login attempts...');
-        await this.queryHandler.resetLoginAttempts();
+
+        try {
+            await this.queryHandler.resetLoginAttempts();
+        } catch (e) {
+            log.error(e);
+        }
+
         setTimeout(this._resetLoginAttempts, THROTTLE_CLEAR_FREQUENCY);
     }
 

@@ -38,8 +38,8 @@ class Client {
 
             if (!this.handlers[message.handler]) {
                 log.warn(
-                    `${this} trying to used undefined handler ` +
-                        message.handler
+                    `${this} trying to use undefined handler: ` ,
+                    message
                 );
                 return;
             }

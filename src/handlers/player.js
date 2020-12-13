@@ -132,6 +132,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     }
 
     const player = await queryHandler.getPlayer(username);
+
     await queryHandler.updatePlayerLogin(
         player.id,
         Math.floor(Date.now() / 1000),
@@ -150,7 +151,13 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     this.server.totalPlayers += 1;
     this.world.players.set(username, player.id);
 
-    this.server.broadcastToWorlds({ handler: 'playerLoggedIn', username });
+    if (!player.blockPrivateChat) {
+        this.server.broadcastToWorlds({
+            handler: 'playerLoggedIn',
+            username,
+            world: this.world.id
+        });
+    }
 
     this.socket.sendMessage(message);
 }
@@ -165,6 +172,15 @@ async function playerLogout({ token, username }) {
         token,
         handler: 'playerLoggedOut',
         username
+    });
+}
+
+async function playerWorldChange({ token, username, world }) {
+    this.server.broadcastToWorlds({
+        token,
+        handler: 'playerWorldChange',
+        username,
+        world
     });
 }
 
@@ -188,7 +204,7 @@ async function playerRegister({ token, username, password, ip }) {
         return this.socket.sendMessage(message);
     }
 
-    const lastCreationDate = await queryHandler.lastCreationDate(ip);
+    const lastCreationDate = +(await queryHandler.lastCreationDate(ip));
 
     if (Date.now() - lastCreationDate < 1000 * 60 * 5) {
         message.code = 7;
@@ -232,14 +248,14 @@ async function playerUpdate(player) {
 async function playerMessage({
     token,
     toUsername,
-    toWorld,
     fromUsername,
     message
 }) {
     try {
-        const world = this.server.worlds[toWorld];
+        const worldID = this.server.getPlayerWorld(toUsername);
+        const world = this.server.worlds[worldID];
 
-        world.client.sendMessage({
+        world.client.socket.sendMessage({
             token,
             handler: 'playerMessage',
             toUsername,
@@ -265,6 +281,7 @@ module.exports = {
     playerGetWorlds,
     playerLogin,
     playerLogout,
+    playerWorldChange,
     playerOnlineCount,
     playerRegister,
     playerUpdate,
