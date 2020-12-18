@@ -1,9 +1,8 @@
 const Client = require('./client');
+const Database = require('better-sqlite3');
 const QueryHandler = require('./query-handler');
 const fs = require('fs');
 const net = require('net');
-const sqlite = require('sqlite');
-const sqlite3 = require('sqlite3').verbose();
 
 const log = require('bole')('server');
 
@@ -19,7 +18,9 @@ class Server {
 
         this.totalPlayers = 0;
         this.clients = new Set();
-        this.worlds = {}; // { id: world }
+
+        // { id: world }
+        this.worlds = {};
 
         const initSocket = (socket) => {
             const client = new Client(this, socket);
@@ -65,7 +66,7 @@ class Server {
         delete this.worlds[world.id];
 
         try {
-            await this.queryHandler.resetLoggedInWorld(world.id);
+            this.queryHandler.resetLoggedInWorld(world.id);
         } catch (e) {
             log.error(e);
         }
@@ -85,6 +86,13 @@ class Server {
 
     async updateHiscoreRanks() {
         log.info('updating hiscore ranks...');
+
+        try {
+            this.queryHandler.updateHiscoreRanks();
+        } catch (e) {
+            log.error(e);
+        }
+
         setTimeout(this._updateHiscoreRanks, HISCORE_FREQUENCY);
     }
 
@@ -92,7 +100,7 @@ class Server {
         log.info('clearing old login attempts...');
 
         try {
-            await this.queryHandler.resetLoginAttempts();
+            this.queryHandler.resetLoginAttempts();
         } catch (e) {
             log.error(e);
         }
@@ -121,19 +129,18 @@ class Server {
     }
 
     async init() {
-        this.database = await sqlite.open({
-            filename: this.config.sqliteFile,
-            driver: sqlite3.Database
-        });
-
-        log.info(`database ${this.config.sqliteFile} opened`);
-
-        this.queryHandler = new QueryHandler(this.database);
-
         try {
-            await this.queryHandler.sync();
-            await this.updateHiscoreRanks();
-            await this.resetLoginAttempts();
+            this.database = new Database(this.config.sqliteFile, {
+                verbose: log.debug
+            });
+
+            log.info(`database ${this.config.sqliteFile} opened`);
+
+            this.queryHandler = new QueryHandler(this.database);
+
+            this.queryHandler.sync();
+            this.updateHiscoreRanks();
+            this.resetLoginAttempts();
         } catch (e) {
             log.error(e);
         }

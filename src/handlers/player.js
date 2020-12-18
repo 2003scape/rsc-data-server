@@ -8,7 +8,7 @@ const bcryptHash = promisify(bcrypt.hash);
 
 async function playerCount({ token }) {
     const queryHandler = this.server.queryHandler;
-    const playerCount = await queryHandler.getPlayerCount();
+    const playerCount = queryHandler.getPlayerCount();
 
     this.socket.sendMessage({
         token,
@@ -47,11 +47,11 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
 
     const queryHandler = this.server.queryHandler;
 
-    let { attempts, lastDate } = await queryHandler.getLoginAttempts(ip);
+    let { attempts, lastDate } = queryHandler.getLoginAttempts(ip);
 
     if (attempts >= 5) {
         if (Date.now() - lastDate >= 1000 * 60 * 5) {
-            await queryHandler.setLoginAttempts(ip, 0);
+            queryHandler.setLoginAttempts(ip, 0);
             attempts = 0;
         } else {
             message.code = 7;
@@ -63,12 +63,12 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
 
     await sleep(attempts * 1000);
 
-    const hash = await queryHandler.getPlayerPassword(username);
+    const hash = queryHandler.getPlayerPassword(username);
 
     if (!hash || !(await bcryptCompare(password, hash))) {
         message.code = 3;
         message.success = false;
-        await queryHandler.setLoginAttempts(ip, attempts + 1);
+        queryHandler.setLoginAttempts(ip, attempts + 1);
         return this.socket.sendMessage(message);
     }
 
@@ -82,7 +82,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         );
 
         const newHash = await bcryptHash(password, passwordHashRounds);
-        await queryHandler.setPlayerPassword(username, newHash);
+        queryHandler.setPlayerPassword(username, newHash);
     }
 
     const isLoggedIn = this.server.getPlayerWorld(username) !== 0;
@@ -93,7 +93,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         return this.socket.sendMessage(message);
     }
 
-    const ipLoginCount = await queryHandler.getPlayerLoginCount(ip);
+    const ipLoginCount = queryHandler.getPlayerLoginCount(ip);
 
     if (ipLoginCount >= this.server.config.playersPerIP) {
         message.code = 6;
@@ -101,7 +101,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         return this.socket.sendMessage(message);
     }
 
-    const banEndDate = await queryHandler.getPlayerBanEnd(username);
+    const banEndDate = queryHandler.getPlayerBanEnd(username);
 
     if (banEndDate) {
         if (banEndDate > Date.now()) {
@@ -113,7 +113,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
             message.success = false;
             return this.socket.sendMessage(message);
         } else {
-            await queryHandler.setPlayerBan(username, 0);
+            queryHandler.setPlayerBan(username, 0);
             await playerLogin.bind(this, { token, username, password, ip })();
             return;
         }
@@ -131,9 +131,9 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         }*/
     }
 
-    const player = await queryHandler.getPlayer(username);
+    const player = queryHandler.getPlayer(username);
 
-    await queryHandler.updatePlayerLogin(
+    queryHandler.updatePlayerLogin(
         player.id,
         Math.floor(Date.now() / 1000),
         ip
@@ -196,7 +196,7 @@ async function playerRegister({ token, username, password, ip }) {
 
     const queryHandler = this.server.queryHandler;
 
-    const ipLoginCount = await queryHandler.getPlayerLoginCount(ip);
+    const ipLoginCount = queryHandler.getPlayerLoginCount(ip);
 
     if (ipLoginCount >= this.server.config.playersPerIP) {
         message.code = 6;
@@ -204,7 +204,7 @@ async function playerRegister({ token, username, password, ip }) {
         return this.socket.sendMessage(message);
     }
 
-    const lastCreationDate = +(await queryHandler.lastCreationDate(ip));
+    const lastCreationDate = +(queryHandler.lastCreationDate(ip));
 
     if (Date.now() - lastCreationDate < 1000 * 60 * 5) {
         message.code = 7;
@@ -212,7 +212,7 @@ async function playerRegister({ token, username, password, ip }) {
         return this.socket.sendMessage(message);
     }
 
-    if (await queryHandler.usernameExists(username)) {
+    if (queryHandler.usernameExists(username)) {
         message.code = 3;
         message.success = false;
         return this.socket.sendMessage(message);
@@ -223,7 +223,7 @@ async function playerRegister({ token, username, password, ip }) {
         this.server.config.passwordHashRounds
     );
 
-    await queryHandler.insertPlayer({ username, password, ip });
+    queryHandler.insertPlayer({ username, password, ip });
 
     message.code = 2;
     message.success = true;
@@ -239,7 +239,7 @@ async function playerUpdate(player) {
     delete player.token;
     delete player.handler;
 
-    await queryHandler.updatePlayer(player);
+    queryHandler.updatePlayer(player);
 
     message.success = true;
     this.socket.sendMessage(message);

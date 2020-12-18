@@ -13,13 +13,12 @@
   "license": "AGPL-3.0+",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^7.1.1",
     "bole": "^4.0.0",
     "camelcase-keys": "^6.2.2",
     "json-socket": "^0.3.0",
     "sleep-promise": "^8.0.1",
     "snakecase-keys": "^3.2.0",
-    "sqlite": "^4.0.14",
-    "sqlite3": "^5.0.0",
     "yargs": "^15.4.1"
   },
   "devDependencies": {

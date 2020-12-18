@@ -1,6 +1,5 @@
 const camelCaseKeys = require('camelcase-keys');
 const fs = require('fs');
-const log = require('bole')('query-handler');
 const skills = require('./skills');
 const snakeCaseKeys = require('snakecase-keys');
 
@@ -47,16 +46,21 @@ const GET_PLAYER_ATTRIBUTES = SET_PLAYER_ATTRIBUTES.concat(
     'login_ip'
 );
 
+const PLAYER_JSON_FIELDS = [
+    'friends',
+    'ignores',
+    'inventory',
+    'bank',
+    'questStages',
+    'cache'
+];
+
 class QueryHandler {
     constructor(database) {
         this.database = database;
-
-        this.database.on('trace', (query) => {
-            log.debug(query);
-        });
     }
 
-    async init() {
+    init() {
         this.statements = {
             resetLoggedIn: 'UPDATE `players` SET `world` = 0',
             resetLoggedInWorld:
@@ -75,8 +79,7 @@ class QueryHandler {
                 'SELECT COUNT(1) FROM `players` WHERE `login_ip` = ? AND ' +
                 '`world` != 0',
             getPlayerBanEnd:
-                'SELECT `ban_end_date` FROM `players` WHERE ' +
-                '`username` = ?',
+                'SELECT `ban_end_date` FROM `players` WHERE `username` = ?',
             setPlayerBan:
                 'UPDATE `players` SET `ban_end_date` = ? WHERE `username` = ?',
             setPlayerPassword:
@@ -93,7 +96,7 @@ class QueryHandler {
                 '`login_attempts` WHERE `ip` = ?',
             setLoginAttempts:
                 'INSERT OR REPLACE INTO `login_attempts` (`ip` ,`attempts`, ' +
-                '`last_attempt_date`) VALUES(:ip, :attempts, ' +
+                '`last_attempt_date`) VALUES (:ip, :attempts, ' +
                 ':last_attempt_date)',
             resetLoginAttempts:
                 'DELETE FROM `login_attempts` WHERE `last_attempt_date` <= ?',
@@ -112,133 +115,71 @@ class QueryHandler {
         };
 
         for (const statementName of Object.keys(this.statements)) {
-            this.statements[statementName] = await this.database.prepare(
+            this.statements[statementName] = this.database.prepare(
                 this.statements[statementName]
             );
         }
     }
 
-    async createTables() {
-        await this.database.exec(CREATE_TABLES);
+    createTables() {
+        this.database.exec(CREATE_TABLES);
     }
 
-    async resetLoggedInWorld(world) {
-        const statement = this.statements.resetLoggedInWorld;
-
-        await statement.run(world);
-        await statement.reset();
+    resetLoggedInWorld(world) {
+        this.statements.resetLoggedInWorld.run(world);
     }
 
-    async usernameExists(username) {
-        const statement = this.statements.usernameExists;
-
-        await statement.bind(username);
-        const exists = !!(await statement.get());
-        await statement.reset();
-
-        return exists;
+    usernameExists(username) {
+        return !!this.statements.usernameExists.get(username);
     }
 
-    async lastCreationDate(ip) {
-        const statement = this.statements.lastCreationDate;
-
-        await statement.bind(ip);
-        const res = await statement.get();
-        await statement.reset();
-
-        return res ? new Date(res['creation_date'] * 1000) : null;
+    lastCreationDate(ip) {
+        const ms = this.statements.lastCreationDate.pluck().get(ip);
+        return ms ? new Date(ms * 1000) : undefined;
     }
 
-    async getPlayerCount() {
-        const statement = this.statements.getPlayerCount;
-
-        const count = (await statement.get())['COUNT(1)'];
-        await statement.reset();
-
-        return count;
+    getPlayerCount() {
+        return this.statements.getPlayerCount.get().count;
     }
 
-    async insertPlayer({ username, password, ip }) {
-        const statement = this.statements.insertPlayer;
-
-        await statement.bind({
-            ':username': username,
-            ':password': password,
-            ':ip': ip
-        });
-
-        await statement.run();
-        await statement.reset();
+    insertPlayer({ username, password, ip }) {
+        this.statements.insertPlayer.run({ username, password, ip });
     }
 
-    async getPlayerPassword(username) {
-        const statement = this.statements.getPlayerPassword;
-
-        await statement.bind(username);
-        const res = await statement.get();
-        await statement.reset();
-        return res ? res.password : null;
+    getPlayerPassword(username) {
+        return this.statements.getPlayerPassword.pluck().get(username);
     }
 
-    async getPlayerLoginCount(ip) {
-        const statement = this.statements.getPlayerLoginCount;
-
-        await statement.bind(ip);
-        const res = await statement.get();
-
-        await statement.reset();
-
-        return res['COUNT(1)'];
+    getPlayerLoginCount(ip) {
+        return this.statements.getPlayerLoginCount.pluck().get(ip);
     }
 
-    async getPlayerBanEnd(username) {
-        const statement = this.statements.getPlayerBanEnd;
+    getPlayerBanEnd(username) {
+        const ms = this.statements.getPlayerBanEnd.pluck().get(username);
 
-        await statement.bind(username);
-        const res = await statement.get();
-
-        await statement.reset();
-
-        if (!res) {
+        if (!ms) {
             return;
         }
 
-        const banEndDate = res['ban_end_date'];
-
-        if (banEndDate === 0) {
-            return;
-        } else if (banEndDate === -1) {
-            // permanent ban
+        // permanent ban
+        if (ms === -1) {
             return -1;
-        } else {
-            return new Date(banEndDate * 1000);
         }
+
+        return new Date(ms * 1000);
     }
 
-    async setPlayerBan(username, banEndDate) {
-        const statement = this.statements.setPlayerBan;
-
-        banEndDate = +banEndDate;
-
-        await statement.bind([banEndDate, username]);
-        await statement.run();
-        await statement.reset();
+    setPlayerBan(username, banEndDate) {
+        this.statements.setPlayerBan.run(username, Number(banEndDate) / 1000);
     }
 
-    async setPlayerPassword(username, password) {
-        const statement = this.statements.setPlayerPassword;
-
-        await statement.bind([password, username]);
-        await statement.run();
-        await statement.reset();
+    setPlayerPassword(username, password) {
+        this.statements.setPlayerPassword.run(username, password);
     }
 
-    async getPlayer(username) {
-        const statement = this.statements.getPlayer;
+    getPlayer(username) {
+        let player = this.statements.getPlayer.get(username);
 
-        await statement.bind(username);
-
-        let player = await statement.get();
         player.skills = {};
 
         for (const skill of skills) {
@@ -253,62 +194,42 @@ class QueryHandler {
 
         player = camelCaseKeys(player);
 
-        player.friends = JSON.parse(player.friends);
-        player.ignores = JSON.parse(player.ignores);
-        player.inventory = JSON.parse(player.inventory);
-        player.bank = JSON.parse(player.bank);
-        player.questStages = JSON.parse(player.questStages);
-        player.cache = JSON.parse(player.cache);
+        for (const field of PLAYER_JSON_FIELDS) {
+            player[field] = JSON.parse(player[field]);
+        }
+
         player.loginIP = player.loginIp;
         delete player.loginIp;
-
-        await statement.reset();
 
         return player;
     }
 
-    async updatePlayerLogin(playerID, date, ip) {
-        const statement = this.statements.updatePlayerLogin;
-
-        await statement.run([date, ip, playerID]);
-        await statement.reset();
+    updatePlayerLogin(playerID, date, ip) {
+        this.statements.updatePlayerLogin.run(date, ip, playerID);
     }
 
-    async getLoginAttempts(ip) {
-        const statement = this.statements.getLoginAttempts;
-
-        await statement.bind(ip);
-        const entry = await statement.get();
-
+    getLoginAttempts(ip) {
+        const entry = this.statements.getLoginAttempts.get(ip);
         const attempts = entry ? entry.attempts : 0;
         const lastDate = entry ? entry['last_attempt_date'] : Date.now();
-
-        await statement.reset();
-
         return { attempts, lastDate };
     }
 
-    async setLoginAttempts(ip, attempts) {
-        const statement = this.statements.setLoginAttempts;
-
-        await statement.run({
-            ':ip': ip,
-            ':attempts': attempts,
-            ':last_attempt_date': Math.floor(Date.now() / 1000)
+    setLoginAttempts(ip, attempts) {
+        this.statements.setLoginAttempts.run({
+            ip,
+            attempts,
+            last_attempt_date: Math.floor(Date.now() / 1000)
         });
-
-        await statement.reset();
     }
 
-    async resetLoginAttempts() {
-        const statement = this.statements.resetLoginAttempts;
-        await statement.run(Math.floor((Date.now() - 1000 * 60 * 5) / 1000));
-        await statement.reset();
+    resetLoginAttempts() {
+        this.statements.resetLoginAttempts.run(
+            Math.floor((Date.now() - 1000 * 60 * 5) / 1000)
+        );
     }
 
-    async updatePlayer(player) {
-        const statement = this.statements.updatePlayer;
-
+    updatePlayer(player) {
         for (const skill of skills) {
             player[`cur_${skill}`] = player.skills[skill].current;
             player[`exp_${skill}`] = player.skills[skill].experience;
@@ -316,53 +237,39 @@ class QueryHandler {
 
         delete player.skills;
 
-        player.friends = JSON.stringify(player.friends);
-        player.ignores = JSON.stringify(player.ignores);
-        player.inventory = JSON.stringify(player.inventory);
-        player.bank = JSON.stringify(player.bank);
-        player.questStages = JSON.stringify(player.questStages);
-        player.cache = JSON.stringify(player.cache);
+        for (const field of PLAYER_JSON_FIELDS) {
+            player[field] = JSON.stringify(player[field]);
+        }
 
         player = snakeCaseKeys(player);
 
-        for (const attr of Object.keys(player)) {
-            player[`:${attr}`] = player[attr];
-            delete player[attr];
-        }
-
-        await statement.run(player);
-        await statement.reset();
+        this.statements.updatePlayer.run(player);
     }
 
-    async insertWorld(world) {
-        const statement = this.statements.insertWorld;
+    insertWorld(world) {
         world = snakeCaseKeys(world);
-
-        for (const key of Object.keys(world)) {
-            world[`:${key}`] = world[key];
-            delete world[key];
-        }
-
-        await statement.run(world);
-        await statement.reset();
+        world.members = +world.members;
+        this.statements.insertWorld.run(world);
     }
 
-    async getWorlds() {
-        const statement = this.statements.getWorlds;
-
-        await statement.bind();
-        const worlds = await statement.all();
-        await statement.reset();
-
-        return camelCaseKeys(worlds);
+    getWorlds() {
+        return camelCaseKeys(this.statements.getWorlds.all()).map((world) => {
+            world.members = +world.members;
+            return world;
+        });
     }
 
-    async sync() {
-        await this.createTables();
-        await this.init();
+    updateHiscoreTotal() {}
 
-        await this.statements.resetLoggedIn.run();
-        await this.statements.resetLoggedIn.finalize();
+    updateHiscoreRanks() {
+        this.updateHiscoreTotal();
+    }
+
+    sync() {
+        this.createTables();
+        this.init();
+
+        this.statements.resetLoggedIn.run();
     }
 }
 
