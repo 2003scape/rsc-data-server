@@ -1,4 +1,4 @@
 node_modules/
-rsc-data-server.sqlite
+rsc-data-server.sqlite*
 .eslintcache
 .node_repl_history

@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS `players` (
     `exp_thieving` integer default '0',
     `total_level` integer default '18',
     `rank_attack` integer default '0',
-    `rank_defence` integer default '0',
+    `rank_defense` integer default '0',
     `rank_strength` integer default '0',
     `rank_hits` integer default '0',
     `rank_ranged` integer default '0',

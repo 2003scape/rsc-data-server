@@ -111,12 +111,58 @@ class QueryHandler {
                 '`tcp_port`, `websocket_port`, `country`, `members`) ' +
                 'VALUES(:id, :ip, :tcp_port, :websocket_port, :country, ' +
                 ':members)',
-            getWorlds: 'SELECT * FROM `worlds`'
+            getWorlds: 'SELECT * FROM `worlds`',
+            dropRankTable: 'DROP TABLE IF EXISTS `hiscore_ranks`',
+            createRankTable:
+                'CREATE TEMPORARY TABLE `hiscore_ranks` ' +
+                '(`player_id` integer, `experience` integer)'
         };
 
         for (const statementName of Object.keys(this.statements)) {
             this.statements[statementName] = this.database.prepare(
                 this.statements[statementName]
+            );
+        }
+
+        this.updateTotalHiscoreRanks = this.database.transaction(() => {
+            this.statements.dropRankTable.run();
+            this.statements.createRankTable.run();
+
+            this.database.exec(
+                'INSERT INTO `hiscore_ranks` SELECT `id` AS `player_id`, ' +
+                    `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\` ` +
+                    'FROM `players` ORDER BY `experience` DESC'
+            );
+
+            this.database.exec(
+                'UPDATE `players` SET `rank_total` = (SELECT ROWID FROM ' +
+                    '`hiscore_ranks` WHERE `hiscore_ranks`.`player_id` = ' +
+                    '`players`.`id`);'
+            );
+        });
+
+        this.updateSkillHiscoreRanks = {};
+
+        for (const skill of skills) {
+            this.updateSkillHiscoreRanks[skill] = this.database.transaction(
+                () => {
+                    this.statements.dropRankTable.run();
+                    this.statements.createRankTable.run();
+
+                    this.database.exec(
+                        'INSERT INTO `hiscore_ranks` SELECT `id` AS ' +
+                            `\`player_id\`, \`exp_${skill}\` AS ` +
+                            '`experience` FROM `players` ORDER BY ' +
+                            '`experience` DESC'
+                    );
+
+                    this.database.exec(
+                        `UPDATE \`players\` SET \`rank_${skill}\` = ` +
+                            '(SELECT ROWID FROM `hiscore_ranks` WHERE ' +
+                            '`hiscore_ranks`.`player_id` = ' +
+                            '`players`.`id`);'
+                    );
+                }
             );
         }
     }
@@ -139,7 +185,7 @@ class QueryHandler {
     }
 
     getPlayerCount() {
-        return this.statements.getPlayerCount.get().count;
+        return this.statements.getPlayerCount.pluck().get();
     }
 
     insertPlayer({ username, password, ip }) {
@@ -259,13 +305,16 @@ class QueryHandler {
         });
     }
 
-    updateHiscoreTotal() {}
-
     updateHiscoreRanks() {
-        this.updateHiscoreTotal();
+        this.updateTotalHiscoreRanks();
+
+        for (const skill of skills) {
+            this.updateSkillHiscoreRanks[skill]();
+        }
     }
 
     sync() {
+        this.database.pragma('journal_mode = WAL');
         this.createTables();
         this.init();
 
