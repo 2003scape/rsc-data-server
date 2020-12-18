@@ -1,7 +1,8 @@
 const camelCaseKeys = require('camelcase-keys');
 const fs = require('fs');
-const skills = require('./skills');
+const skills = require('./skills.json');
 const snakeCaseKeys = require('snakecase-keys');
+const { experienceToLevel } = require('./skills');
 
 const CREATE_TABLES = fs
     .readFileSync(`${__dirname}/../rsc-data-server.sql`)
@@ -46,6 +47,8 @@ const GET_PLAYER_ATTRIBUTES = SET_PLAYER_ATTRIBUTES.concat(
     'login_ip'
 );
 
+SET_PLAYER_ATTRIBUTES.push('total_level');
+
 const PLAYER_JSON_FIELDS = [
     'friends',
     'ignores',
@@ -54,6 +57,9 @@ const PLAYER_JSON_FIELDS = [
     'questStages',
     'cache'
 ];
+
+const TOTAL_EXP = `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\``;
+const RANKS_PER_PAGE = 8;
 
 class QueryHandler {
     constructor(database) {
@@ -115,7 +121,15 @@ class QueryHandler {
             dropRankTable: 'DROP TABLE IF EXISTS `hiscore_ranks`',
             createRankTable:
                 'CREATE TEMPORARY TABLE `hiscore_ranks` ' +
-                '(`player_id` integer, `experience` integer)'
+                '(`player_id` integer, `experience` integer)',
+            getTotalHiscoreRanks:
+                'SELECT `username`, `rank_total` as `rank`, `total_level` AS ' +
+                `\`level\`, ${TOTAL_EXP} FROM \`players\` ORDER BY ` +
+                `\`rank_total\` ASC LIMIT ${RANKS_PER_PAGE} OFFSET ?`,
+            getTotalHiscoreRanksBetween:
+                'SELECT `username`, `rank_total` as `rank`, `total_level` AS ' +
+                `\`level\`, ${TOTAL_EXP} FROM \`players\` WHERE ` +
+                '`rank_total` BETWEEN ? AND ? ORDER BY `rank_total` ASC'
         };
 
         for (const statementName of Object.keys(this.statements)) {
@@ -130,14 +144,14 @@ class QueryHandler {
 
             this.database.exec(
                 'INSERT INTO `hiscore_ranks` SELECT `id` AS `player_id`, ' +
-                    `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\` ` +
-                    'FROM `players` ORDER BY `experience` DESC'
+                    `${TOTAL_EXP} FROM \`players\` ORDER BY ` +
+                    '`experience` DESC'
             );
 
             this.database.exec(
                 'UPDATE `players` SET `rank_total` = (SELECT ROWID FROM ' +
                     '`hiscore_ranks` WHERE `hiscore_ranks`.`player_id` = ' +
-                    '`players`.`id`);'
+                    '`players`.`id`)'
             );
         });
 
@@ -276,9 +290,13 @@ class QueryHandler {
     }
 
     updatePlayer(player) {
+        player.totalLevel = 0;
+
         for (const skill of skills) {
+            const experience = player.skills[skill].experience;
             player[`cur_${skill}`] = player.skills[skill].current;
-            player[`exp_${skill}`] = player.skills[skill].experience;
+            player[`exp_${skill}`] = experience;
+            player.totalLevel += experienceToLevel(experience);
         }
 
         delete player.skills;
@@ -287,9 +305,7 @@ class QueryHandler {
             player[field] = JSON.stringify(player[field]);
         }
 
-        player = snakeCaseKeys(player);
-
-        this.statements.updatePlayer.run(player);
+        this.statements.updatePlayer.run(snakeCaseKeys(player));
     }
 
     insertWorld(world) {
@@ -300,7 +316,7 @@ class QueryHandler {
 
     getWorlds() {
         return camelCaseKeys(this.statements.getWorlds.all()).map((world) => {
-            world.members = +world.members;
+            world.members = !!world.members;
             return world;
         });
     }
@@ -311,6 +327,26 @@ class QueryHandler {
         for (const skill of skills) {
             this.updateSkillHiscoreRanks[skill]();
         }
+    }
+
+    getHiscoreRanks(skill = 'overall', rank = -1, page = 0) {
+        let ranks;
+
+        if (skill === 'overall' && rank === -1) {
+            ranks = this.statements.getTotalHiscoreRanks.all(
+                page * RANKS_PER_PAGE
+            );
+        } else if (skill === 'overall' && rank > -1) {
+            ranks = this.statements.getTotalHiscoreRanksBetween.all(
+                rank - RANKS_PER_PAGE / 2,
+                rank + RANKS_PER_PAGE / 2
+            );
+        }
+
+        return ranks.map((entry) => {
+            entry.experience = Math.floor(entry.experience / 4);
+            return entry;
+        });
     }
 
     sync() {

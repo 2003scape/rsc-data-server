@@ -212,6 +212,8 @@ async function playerRegister({ token, username, password, ip }) {
         return this.socket.sendMessage(message);
     }
 
+    username = username.replace('_', '').trim().toLowerCase();
+
     if (queryHandler.usernameExists(username)) {
         message.code = 3;
         message.success = false;

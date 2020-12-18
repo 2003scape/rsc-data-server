@@ -1,5 +1,6 @@
 const handlers = [
     require('./authenticate'),
+    require('./hiscores'),
     require('./player'),
     require('./world')
 ];
