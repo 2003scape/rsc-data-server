@@ -132,10 +132,8 @@ class QueryHandler {
                 '`rank_total` BETWEEN ? AND ? ORDER BY `rank_total` ASC'
         };
 
-        for (const statementName of Object.keys(this.statements)) {
-            this.statements[statementName] = this.database.prepare(
-                this.statements[statementName]
-            );
+        for (const [name, statement] of Object.entries(this.statements)) {
+            this.statements[name] = this.database.prepare(statement);
         }
 
         this.updateTotalHiscoreRanks = this.database.transaction(() => {
@@ -155,9 +153,26 @@ class QueryHandler {
             );
         });
 
+        this.statements.getSkillHiscoreRanks = {};
+        this.statements.getSkillHiscoreRanksBetween = {};
         this.updateSkillHiscoreRanks = {};
 
         for (const skill of skills) {
+            this.statements.getSkillHiscoreRanks[skill] = this.database.prepare(
+                `SELECT \`username\`, \`rank_${skill}\` as \`rank\`, ` +
+                    `\`exp_${skill}\` AS \`experience\` FROM \`players\` ` +
+                    `ORDER BY \`rank_${skill}\` ASC LIMIT ${RANKS_PER_PAGE} ` +
+                    'OFFSET ?'
+            );
+
+            this.statements.getSkillHiscoreRanksBetween[
+                skill
+            ] = this.database.prepare(
+                `SELECT \`username\`, \`rank_${skill}\` as \`rank\`, ` +
+                    `\`exp_${skill}\` AS \`experience\` FROM \`players\` WHERE ` +
+                    `\`rank_${skill}\` BETWEEN ? AND ? ORDER BY \`rank_total\` ASC`
+            );
+
             this.updateSkillHiscoreRanks[skill] = this.database.transaction(
                 () => {
                     this.statements.dropRankTable.run();
@@ -332,18 +347,42 @@ class QueryHandler {
     getHiscoreRanks(skill = 'overall', rank = -1, page = 0) {
         let ranks;
 
-        if (skill === 'overall' && rank === -1) {
-            ranks = this.statements.getTotalHiscoreRanks.all(
-                page * RANKS_PER_PAGE
-            );
-        } else if (skill === 'overall' && rank > -1) {
-            ranks = this.statements.getTotalHiscoreRanksBetween.all(
-                rank - RANKS_PER_PAGE / 2,
-                rank + RANKS_PER_PAGE / 2
-            );
+        if (rank > -1) {
+            rank = rank < 1 ? 1 : rank;
+
+            const min = Math.max(1, rank - RANKS_PER_PAGE / 2);
+            let max = rank + RANKS_PER_PAGE / 2;
+
+            if (rank < RANKS_PER_PAGE / 2) {
+                max += RANKS_PER_PAGE / 2 - min;
+            }
+
+            if (skill === 'overall') {
+                ranks = this.statements.getTotalHiscoreRanksBetween.all(
+                    min,
+                    max
+                );
+            } else {
+                ranks = this.statements.getSkillHiscoreRanksBetween[skill].all(
+                    min,
+                    max
+                );
+            }
+        } else {
+            const offset = page * RANKS_PER_PAGE;
+
+            if (skill === 'overall') {
+                ranks = this.statements.getTotalHiscoreRanks.all(offset);
+            } else {
+                this.statements.getSkillHiscoreRanks[skill].all(offset);
+            }
         }
 
         return ranks.map((entry) => {
+            if (!entry.level) {
+                entry.level = experienceToLevel(entry.experience);
+            }
+
             entry.experience = Math.floor(entry.experience / 4);
             return entry;
         });
