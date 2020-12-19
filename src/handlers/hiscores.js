@@ -14,7 +14,9 @@ async function getHiscoreRanks({
 
     const queryHandler = this.server.queryHandler;
     const ranks = queryHandler.getHiscoreRanks(skill, rank, page);
-    this.socket.sendMessage({ token, ranks });
+    const pages = this.server.hiscorePages[skill] || 0;
+
+    this.socket.sendMessage({ token, ranks, pages });
 }
 
 module.exports = { getHiscoreRanks };

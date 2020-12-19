@@ -59,7 +59,16 @@ const PLAYER_JSON_FIELDS = [
 ];
 
 const TOTAL_EXP = `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\``;
-const RANKS_PER_PAGE = 8;
+const RANKS_PER_PAGE = 4;
+
+function getPages(database) {
+    return Math.ceil(
+        database
+            .prepare('SELECT COUNT(1) FROM `hiscore_ranks`')
+            .pluck()
+            .get() / RANKS_PER_PAGE
+    );
+}
 
 class QueryHandler {
     constructor(database) {
@@ -123,11 +132,11 @@ class QueryHandler {
                 'CREATE TEMPORARY TABLE `hiscore_ranks` ' +
                 '(`player_id` integer, `experience` integer)',
             getTotalHiscoreRanks:
-                'SELECT `username`, `rank_total` as `rank`, `total_level` AS ' +
+                'SELECT `username`, `rank_total` AS `rank`, `total_level` AS ' +
                 `\`level\`, ${TOTAL_EXP} FROM \`players\` ORDER BY ` +
                 `\`rank_total\` ASC LIMIT ${RANKS_PER_PAGE} OFFSET ?`,
             getTotalHiscoreRanksBetween:
-                'SELECT `username`, `rank_total` as `rank`, `total_level` AS ' +
+                'SELECT `username`, `rank_total` AS `rank`, `total_level` AS ' +
                 `\`level\`, ${TOTAL_EXP} FROM \`players\` WHERE ` +
                 '`rank_total` BETWEEN ? AND ? ORDER BY `rank_total` ASC'
         };
@@ -151,6 +160,9 @@ class QueryHandler {
                     '`hiscore_ranks` WHERE `hiscore_ranks`.`player_id` = ' +
                     '`players`.`id`)'
             );
+
+            return getPages(this.database);
+
         });
 
         this.statements.getSkillHiscoreRanks = {};
@@ -159,7 +171,7 @@ class QueryHandler {
 
         for (const skill of skills) {
             this.statements.getSkillHiscoreRanks[skill] = this.database.prepare(
-                `SELECT \`username\`, \`rank_${skill}\` as \`rank\`, ` +
+                `SELECT \`username\`, \`rank_${skill}\` AS \`rank\`, ` +
                     `\`exp_${skill}\` AS \`experience\` FROM \`players\` ` +
                     `ORDER BY \`rank_${skill}\` ASC LIMIT ${RANKS_PER_PAGE} ` +
                     'OFFSET ?'
@@ -168,7 +180,7 @@ class QueryHandler {
             this.statements.getSkillHiscoreRanksBetween[
                 skill
             ] = this.database.prepare(
-                `SELECT \`username\`, \`rank_${skill}\` as \`rank\`, ` +
+                `SELECT \`username\`, \`rank_${skill}\` AS \`rank\`, ` +
                     `\`exp_${skill}\` AS \`experience\` FROM \`players\` WHERE ` +
                     `\`rank_${skill}\` BETWEEN ? AND ? ORDER BY \`rank_total\` ASC`
             );
@@ -191,6 +203,8 @@ class QueryHandler {
                             '`hiscore_ranks`.`player_id` = ' +
                             '`players`.`id`);'
                     );
+
+                    return getPages(this.database);
                 }
             );
         }
@@ -337,11 +351,15 @@ class QueryHandler {
     }
 
     updateHiscoreRanks() {
-        this.updateTotalHiscoreRanks();
+        const pages = {
+            overall: this.updateTotalHiscoreRanks(),
+        };
 
         for (const skill of skills) {
-            this.updateSkillHiscoreRanks[skill]();
+            pages[skill] = this.updateSkillHiscoreRanks[skill]();
         }
+
+        return pages;
     }
 
     getHiscoreRanks(skill = 'overall', rank = -1, page = 0) {
@@ -374,7 +392,7 @@ class QueryHandler {
             if (skill === 'overall') {
                 ranks = this.statements.getTotalHiscoreRanks.all(offset);
             } else {
-                this.statements.getSkillHiscoreRanks[skill].all(offset);
+                ranks = this.statements.getSkillHiscoreRanks[skill].all(offset);
             }
         }
 

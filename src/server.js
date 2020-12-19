@@ -44,6 +44,9 @@ class Server {
             });
         }
 
+        // { skill: rankPages }
+        this.hiscorePages = {};
+
         this._updateHiscoreRanks = this.updateHiscoreRanks.bind(this);
         this._resetLoginAttempts = this.resetLoginAttempts.bind(this);
     }
@@ -88,7 +91,7 @@ class Server {
         log.info('updating hiscore ranks...');
 
         try {
-            this.queryHandler.updateHiscoreRanks();
+            this.hiscorePages = this.queryHandler.updateHiscoreRanks();
         } catch (e) {
             log.error(e);
         }
