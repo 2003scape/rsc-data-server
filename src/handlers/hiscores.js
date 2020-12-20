@@ -19,4 +19,13 @@ async function getHiscoreRanks({
     this.socket.sendMessage({ token, ranks, pages });
 }
 
-module.exports = { getHiscoreRanks };
+async function getPlayerRanks({ token, username }) {
+    username = username.toLowerCase();
+
+    const queryHandler = this.server.queryHandler;
+    const ranks = queryHandler.getPlayerRanks(username) || null;
+
+    this.socket.sendMessage({ token, ranks });
+}
+
+module.exports = { getHiscoreRanks, getPlayerRanks };

@@ -59,14 +59,12 @@ const PLAYER_JSON_FIELDS = [
 ];
 
 const TOTAL_EXP = `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\``;
-const RANKS_PER_PAGE = 4;
+const RANKS_PER_PAGE = 16;
 
 function getPages(database) {
     return Math.ceil(
-        database
-            .prepare('SELECT COUNT(1) FROM `hiscore_ranks`')
-            .pluck()
-            .get() / RANKS_PER_PAGE
+        database.prepare('SELECT COUNT(1) FROM `hiscore_ranks`').pluck().get() /
+            RANKS_PER_PAGE
     );
 }
 
@@ -101,7 +99,7 @@ class QueryHandler {
                 'UPDATE `players` SET `password` = ? WHERE `username` = ?',
             getPlayer:
                 'SELECT ' +
-                GET_PLAYER_ATTRIBUTES.map((attr) => `\`${attr}\``).join(', ') +
+                GET_PLAYER_ATTRIBUTES.map((attr) => `\`${attr}\``) +
                 'FROM `players` WHERE `username` = ?',
             updatePlayerLogin:
                 'UPDATE `players` SET `login_date` = ?, `login_ip` = ? ' +
@@ -117,9 +115,7 @@ class QueryHandler {
                 'DELETE FROM `login_attempts` WHERE `last_attempt_date` <= ?',
             updatePlayer:
                 'UPDATE `players` SET ' +
-                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`).join(
-                    ', '
-                ) +
+                SET_PLAYER_ATTRIBUTES.map((attr) => `${attr} = :${attr}`) +
                 ' WHERE `id` = :id',
             insertWorld:
                 'INSERT OR REPLACE INTO `worlds` (`id`, `ip`, ' +
@@ -138,7 +134,12 @@ class QueryHandler {
             getTotalHiscoreRanksBetween:
                 'SELECT `username`, `rank_total` AS `rank`, `total_level` AS ' +
                 `\`level\`, ${TOTAL_EXP} FROM \`players\` WHERE ` +
-                '`rank_total` BETWEEN ? AND ? ORDER BY `rank_total` ASC'
+                '`rank_total` BETWEEN ? AND ? ORDER BY `rank_total` ASC',
+            getPlayerRanks:
+                `SELECT ${skills.map(
+                    (skill) => `\`exp_${skill}\`, \`rank_${skill}\``
+                )}, \`total_level\`, ${TOTAL_EXP}, \`rank_total\` `+
+                'FROM `players` WHERE `username` = ?'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -162,7 +163,6 @@ class QueryHandler {
             );
 
             return getPages(this.database);
-
         });
 
         this.statements.getSkillHiscoreRanks = {};
@@ -182,7 +182,8 @@ class QueryHandler {
             ] = this.database.prepare(
                 `SELECT \`username\`, \`rank_${skill}\` AS \`rank\`, ` +
                     `\`exp_${skill}\` AS \`experience\` FROM \`players\` WHERE ` +
-                    `\`rank_${skill}\` BETWEEN ? AND ? ORDER BY \`rank_total\` ASC`
+                    `\`rank_${skill}\` BETWEEN ? AND ? ORDER BY ` +
+                    `\`rank_${skill}\` ASC`
             );
 
             this.updateSkillHiscoreRanks[skill] = this.database.transaction(
@@ -300,7 +301,7 @@ class QueryHandler {
     getLoginAttempts(ip) {
         const entry = this.statements.getLoginAttempts.get(ip);
         const attempts = entry ? entry.attempts : 0;
-        const lastDate = entry ? entry['last_attempt_date'] : Date.now();
+        const lastDate = entry ? entry.last_attempt_date : Date.now();
         return { attempts, lastDate };
     }
 
@@ -352,7 +353,7 @@ class QueryHandler {
 
     updateHiscoreRanks() {
         const pages = {
-            overall: this.updateTotalHiscoreRanks(),
+            overall: this.updateTotalHiscoreRanks()
         };
 
         for (const skill of skills) {
@@ -404,6 +405,34 @@ class QueryHandler {
             entry.experience = Math.floor(entry.experience / 4);
             return entry;
         });
+    }
+
+    getPlayerRanks(username) {
+        const res = this.statements.getPlayerRanks.get(username);
+
+        if (!res) {
+            return;
+        }
+
+        const ranks = {};
+
+        for (const skill of skills) {
+            const experience = res[`exp_${skill}`];
+
+            ranks[skill] = {
+                rank: res[`rank_${skill}`],
+                experience: Math.floor(experience / 4),
+                level: experienceToLevel(experience)
+            };
+        }
+
+        ranks.overall = {
+            rank: res.rank_total,
+            experience: Math.floor(res.experience / 4),
+            level: res.total_level
+        };
+
+        return ranks;
     }
 
     sync() {
