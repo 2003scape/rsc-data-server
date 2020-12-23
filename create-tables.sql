@@ -129,3 +129,17 @@ CREATE TABLE IF NOT EXISTS `login_attempts` (
 
 CREATE UNIQUE INDEX IF NOT EXISTS `login_attempts_ip_unique` on `login_attempts`
 (`ip`);
+
+CREATE TABLE IF NOT EXISTS `news` (
+    `id` integer not null primary key autoincrement,
+    `date` datetime default (strftime('%s', 'now')),
+    `category` integer default '0',
+    `title` varchar(255),
+    `body` TEXT
+);
+
+CREATE TABLE IF NOT EXISTS `uploads` (
+    `id` integer not null primary key autoincrement,
+    `name` varchar(255),
+    `file` blob
+);

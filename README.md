@@ -241,7 +241,7 @@ rsc-data-server sends these to certain (or all) clients with the each header
 corresponding to the `.handler` property:
 
 ### playerLoggedIn
-sent to rsc-server instances when players login.
+sent to data clients when players login.
 
 ```javascript
 {
@@ -252,7 +252,7 @@ sent to rsc-server instances when players login.
 ```
 
 ### playerLoggedOut
-sent to rsc-server instances when players logout
+sent to data clients when players logout.
 
 ```javascript
 {
@@ -262,7 +262,7 @@ sent to rsc-server instances when players logout
 ```
 
 ### playerWorldChange
-sent to rsc-server instances when players change world appearance.
+sent to data clients when players change world appearance.
 
 ```javascript
 {
@@ -273,7 +273,7 @@ sent to rsc-server instances when players change world appearance.
 ```
 
 ### playerMessage
-sent to the rsc-server instance corresponding to the the world `toUsername`
+sent to the data client corresponding to the the world `toUsername`
 resides in the `playerMessage` handler.
 
 ```javascript

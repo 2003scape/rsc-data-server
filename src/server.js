@@ -115,12 +115,13 @@ class Server {
         if (this.config.sockFile) {
             try {
                 fs.unlinkSync(this.config.sockFile);
+
                 log.debug(
                     'removing existing socket file',
                     this.config.sockFile
                 );
             } catch (e) {
-                // ignore
+                // pass
             }
 
             this.ipcServer.listen(this.config.sockFile);

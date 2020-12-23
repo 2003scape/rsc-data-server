@@ -5,7 +5,7 @@ const snakeCaseKeys = require('snakecase-keys');
 const { experienceToLevel } = require('./skills');
 
 const CREATE_TABLES = fs
-    .readFileSync(`${__dirname}/../rsc-data-server.sql`)
+    .readFileSync(`${__dirname}/../create-tables.sql`)
     .toString();
 
 const SET_PLAYER_ATTRIBUTES = [
@@ -61,7 +61,10 @@ const PLAYER_JSON_FIELDS = [
 const TOTAL_EXP = `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\``;
 const RANKS_PER_PAGE = 16;
 
-function getPages(database) {
+const SUMMARY_LENGTH = 140;
+const NEWS_PER_PAGE = 10;
+
+function getHiscorePages(database) {
     return Math.ceil(
         database.prepare('SELECT COUNT(1) FROM `hiscore_ranks`').pluck().get() /
             RANKS_PER_PAGE
@@ -138,8 +141,21 @@ class QueryHandler {
             getPlayerRanks:
                 `SELECT ${skills.map(
                     (skill) => `\`exp_${skill}\`, \`rank_${skill}\``
-                )}, \`total_level\`, ${TOTAL_EXP}, \`rank_total\` `+
-                'FROM `players` WHERE `username` = ?'
+                )}, \`total_level\`, ${TOTAL_EXP}, \`rank_total\` ` +
+                'FROM `players` WHERE `username` = ?',
+            searchNews:
+                'SELECT `id`, `date`, `category`, `title`, ' +
+                `substr(\`body\`, 0, ${SUMMARY_LENGTH}) AS \`summary\` ` +
+                'FROM `news` WHERE ' +
+                'CASE WHEN :category > -1 THEN `category` = :category ELSE ' +
+                'true END AND ' +
+                'CASE WHEN LENGTH(:terms) > 0 THEN `title` LIKE :terms OR ' +
+                '`body` LIKE :terms ELSE true END AND ' +
+                'CASE WHEN :before > -1 AND :after > -1 THEN ' +
+                '`date` < :before AND `date` >= :after ELSE true END ' +
+                'ORDER BY `date` DESC ' +
+                `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
+            getNews: 'SELECT * FROM `news` WHERE `id` = ?'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -162,7 +178,7 @@ class QueryHandler {
                     '`players`.`id`)'
             );
 
-            return getPages(this.database);
+            return getHiscorePages(this.database);
         });
 
         this.statements.getSkillHiscoreRanks = {};
@@ -205,7 +221,7 @@ class QueryHandler {
                             '`players`.`id`);'
                     );
 
-                    return getPages(this.database);
+                    return getHiscorePages(this.database);
                 }
             );
         }
@@ -433,6 +449,17 @@ class QueryHandler {
         };
 
         return ranks;
+    }
+
+    getNews(query) {
+        if (query.id !== -1) {
+            return this.statements.getNews.get(query.id);
+        }
+
+        delete query.id;
+        query.terms = `%${query.terms.replace(/%|_/g, '')}%`;
+
+        return this.statements.searchNews.all(query);
     }
 
     sync() {
