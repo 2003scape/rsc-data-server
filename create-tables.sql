@@ -143,3 +143,5 @@ CREATE TABLE IF NOT EXISTS `uploads` (
     `name` varchar(255),
     `file` blob
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS `name_unique` on `uploads` (`name`);

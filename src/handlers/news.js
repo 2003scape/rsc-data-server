@@ -5,7 +5,7 @@ async function getNews({
     page = 0,
     category = -1,
     before = -1,
-    after = 1
+    after = -1
 }) {
     const queryHandler = this.server.queryHandler;
 
@@ -13,15 +13,12 @@ async function getNews({
         id,
         terms,
         page,
-        category,
+        category: category > -1 ? category - 1 : category,
         before,
         after
     });
 
-    this.socket.sendMessage({
-        token,
-        articles
-    });
+    this.socket.sendMessage({ token, articles });
 }
 
 async function addNews({ token, title, category, body }) {}
@@ -30,4 +27,12 @@ async function editNews({ token, id, title, category, body }) {}
 
 async function uploadFile({ token, name, file }) {}
 
-module.exports = { getNews, addNews, editNews, uploadFile };
+async function getFile({ token, name }) {
+    const queryHandler = this.server.queryHandler;
+    let file = queryHandler.getFile(name);
+    file = file ? file.toString('base64') : null;
+
+    this.socket.sendMessage({ token, file });
+}
+
+module.exports = { getNews, addNews, editNews, uploadFile, getFile };

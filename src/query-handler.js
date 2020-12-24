@@ -149,13 +149,14 @@ class QueryHandler {
                 'FROM `news` WHERE ' +
                 'CASE WHEN :category > -1 THEN `category` = :category ELSE ' +
                 'true END AND ' +
-                'CASE WHEN LENGTH(:terms) > 0 THEN `title` LIKE :terms OR ' +
+                'CASE WHEN LENGTH(:terms) > 2 THEN `title` LIKE :terms OR ' +
                 '`body` LIKE :terms ELSE true END AND ' +
                 'CASE WHEN :before > -1 AND :after > -1 THEN ' +
                 '`date` < :before AND `date` >= :after ELSE true END ' +
                 'ORDER BY `date` DESC ' +
                 `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
-            getNews: 'SELECT * FROM `news` WHERE `id` = ?'
+            getNews: 'SELECT * FROM `news` WHERE `id` = ?',
+            getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -459,7 +460,34 @@ class QueryHandler {
         delete query.id;
         query.terms = `%${query.terms.replace(/%|_/g, '')}%`;
 
-        return this.statements.searchNews.all(query);
+        if (!query.page) {
+            query.page = -1;
+        }
+
+        if (typeof query.category === 'undefined') {
+            query.category = -1;
+        }
+
+        return this.statements.searchNews.all(query).map((article) => {
+            const summary = article.summary.trim();
+            const newLineAt = summary.indexOf('\n');
+
+            article.summary =
+                newLineAt > -1
+                    ? summary.slice(0, newLineAt).replace(/\.|!|\?$/, '')
+                    : summary;
+
+            article.summary = article.summary.replace(
+                /[^a-z0-9\-=/$@!.,'"? :]/gi,
+                ''
+            ).trim();
+
+            return article;
+        });
+    }
+
+    getFile(name) {
+        return this.statements.getFile.pluck().get(name);
     }
 
     sync() {
