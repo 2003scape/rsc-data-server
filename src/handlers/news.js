@@ -9,7 +9,7 @@ async function getNews({
 }) {
     const queryHandler = this.server.queryHandler;
 
-    const articles = queryHandler.getNews({
+    const { pages, articles } = queryHandler.getNews({
         id,
         terms,
         page,
@@ -18,7 +18,7 @@ async function getNews({
         after
     });
 
-    this.socket.sendMessage({ token, articles });
+    this.socket.sendMessage({ token, articles, pages });
 }
 
 async function addNews({ token, title, category, body }) {}

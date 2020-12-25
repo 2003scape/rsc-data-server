@@ -2,6 +2,7 @@ const camelCaseKeys = require('camelcase-keys');
 const fs = require('fs');
 const skills = require('./skills.json');
 const snakeCaseKeys = require('snakecase-keys');
+const stripHTML = require('string-strip-html');
 const { experienceToLevel } = require('./skills');
 
 const CREATE_TABLES = fs
@@ -145,8 +146,8 @@ class QueryHandler {
                 'FROM `players` WHERE `username` = ?',
             searchNews:
                 'SELECT `id`, `date`, `category`, `title`, ' +
-                `substr(\`body\`, 0, ${SUMMARY_LENGTH}) AS \`summary\` ` +
-                'FROM `news` WHERE ' +
+                `substr(\`body\`, 0, ${SUMMARY_LENGTH}) AS \`summary\`, ` +
+                'count(1) over() AS `total` FROM `news` WHERE ' +
                 'CASE WHEN :category > -1 THEN `category` = :category ELSE ' +
                 'true END AND ' +
                 'CASE WHEN LENGTH(:terms) > 2 THEN `title` LIKE :terms OR ' +
@@ -454,7 +455,7 @@ class QueryHandler {
 
     getNews(query) {
         if (query.id !== -1) {
-            return this.statements.getNews.get(query.id);
+            return { articles: this.statements.getNews.get(query.id) };
         }
 
         delete query.id;
@@ -468,22 +469,39 @@ class QueryHandler {
             query.category = -1;
         }
 
-        return this.statements.searchNews.all(query).map((article) => {
-            const summary = article.summary.trim();
-            const newLineAt = summary.indexOf('\n');
+        let pages = 0;
 
-            article.summary =
-                newLineAt > -1
-                    ? summary.slice(0, newLineAt).replace(/\.|!|\?$/, '')
-                    : summary;
+        const articles = this.statements.searchNews
+            .all(query)
+            .map((article) => {
+                if (!pages) {
+                    pages = Math.ceil(article.total / NEWS_PER_PAGE);
+                }
 
-            article.summary = article.summary.replace(
-                /[^a-z0-9\-=/$@!.,'"? :]/gi,
-                ''
-            ).trim();
+                const summary = article.summary.trim();
+                const newLineAt = summary.indexOf('\n');
 
-            return article;
-        });
+                article.summary =
+                    newLineAt > -1
+                        ? summary.slice(0, newLineAt).replace(/\.|!|\?$/, '')
+                        : summary;
+
+                article.summary = stripHTML(article.summary, {
+                    stripTogetherWithTheirContents: ['*']
+                }).result;
+
+                article.summary = article.summary
+                    .replace(/[^a-z0-9\-=/$@!.,'"? :]/gi, '')
+                    .trim();
+
+                if (!article.summary.length) {
+                    article.summary = 'No summary available';
+                }
+
+                return article;
+            });
+
+        return { articles, pages };
     }
 
     getFile(name) {
