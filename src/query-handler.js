@@ -146,8 +146,8 @@ class QueryHandler {
                 'FROM `players` WHERE `username` = ?',
             searchNews:
                 'SELECT `id`, `date`, `category`, `title`, ' +
-                `substr(\`body\`, 0, ${SUMMARY_LENGTH}) AS \`summary\`, ` +
-                'count(1) over() AS `total` FROM `news` WHERE ' +
+                `trim(substr(\`body\`, 0, ${SUMMARY_LENGTH})) AS ` +
+                '`summary`, count(1) over() AS `total` FROM `news` WHERE ' +
                 'CASE WHEN :category > -1 THEN `category` = :category ELSE ' +
                 'true END AND ' +
                 'CASE WHEN LENGTH(:terms) > 2 THEN `title` LIKE :terms OR ' +
@@ -157,7 +157,9 @@ class QueryHandler {
                 'ORDER BY `date` DESC ' +
                 `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
             getNews: 'SELECT * FROM `news` WHERE `id` = ?',
-            getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?'
+            getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?',
+            getWebPlayer:
+                'SELECT `id`, `rank` FROM `players` WHERE `username` = ?'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -506,6 +508,10 @@ class QueryHandler {
 
     getFile(name) {
         return this.statements.getFile.pluck().get(name);
+    }
+
+    getWebPlayer(username) {
+        return this.statements.getWebPlayer.get(username);
     }
 
     sync() {
