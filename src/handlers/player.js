@@ -6,6 +6,16 @@ const sleep = require('sleep-promise');
 const bcryptCompare = promisify(bcrypt.compare);
 const bcryptHash = promisify(bcrypt.hash);
 
+const PLAYER_BOOLEAN_PROPERTIES = [
+    'cameraAuto',
+    'oneMouseButton',
+    'soundOn',
+    'blockChat',
+    'blockPrivateChat',
+    'blockTrade',
+    'blockDuel'
+];
+
 async function throttleAttempt(queryHandler, ip) {
     let { attempts, lastDate } = queryHandler.getLoginAttempts(ip);
 
@@ -78,8 +88,6 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
         message.success = false;
         return this.socket.sendMessage(message);
     }
-
-    queryHandler.setLoginAttempts(ip, 0);
 
     const rounds = bcrypt.getRounds(hash);
     const passwordHashRounds = this.server.config.passwordHashRounds;
@@ -213,7 +221,7 @@ async function playerRegister({ token, username, password, ip }) {
         return this.socket.sendMessage(message);
     }
 
-    const lastCreationDate = +(queryHandler.lastCreationDate(ip));
+    const lastCreationDate = +queryHandler.lastCreationDate(ip);
 
     if (Date.now() - lastCreationDate < 1000 * 60 * 5) {
         message.code = 7;
@@ -250,18 +258,17 @@ async function playerUpdate(player) {
     delete player.token;
     delete player.handler;
 
+    for (const property of PLAYER_BOOLEAN_PROPERTIES) {
+        player[property] = +player[property];
+    }
+
     queryHandler.updatePlayer(player);
 
     message.success = true;
     this.socket.sendMessage(message);
 }
 
-async function playerMessage({
-    token,
-    toUsername,
-    fromUsername,
-    message
-}) {
+async function playerMessage({ token, toUsername, fromUsername, message }) {
     try {
         const worldID = this.server.getPlayerWorld(toUsername);
         const world = this.server.worlds[worldID];
@@ -298,8 +305,6 @@ async function webLogin({ token, username, password, ip }) {
     if (!hash || !(await bcryptCompare(password, hash))) {
         return this.socket.sendMessage({ token, success: false });
     }
-
-    queryHandler.setLoginAttempts(ip, 0);
 
     const player = queryHandler.getWebPlayer(username);
 
