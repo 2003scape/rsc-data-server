@@ -158,8 +158,13 @@ class QueryHandler {
                 `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
             getNews: 'SELECT * FROM `news` WHERE `id` = ?',
             insertNews:
-                'INSERT INTO `news` (`date`, `category`, `title`, `body`) ' +
+                'INSERT OR REPLACE INTO `news` ' +
+                '(`date`, `category`, `title`, `body`) ' +
                 'VALUES (:date, :category, :title, :body)',
+            editNews:
+                'UPDATE `news` SET ' +
+                '`title` = :title, `body` = :body, `date` = :date ' +
+                'WHERE `id` = :id',
             getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?',
             getWebPlayer:
                 'SELECT `id`, `rank` FROM `players` WHERE `username` = ?',
@@ -515,6 +520,10 @@ class QueryHandler {
 
     insertNews(article) {
         return this.statements.insertNews.run(article);
+    }
+
+    editNews(article) {
+        return this.statements.editNews.run(article);
     }
 
     getFile(name) {
