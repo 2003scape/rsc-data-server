@@ -1,7 +1,7 @@
 const handlers = [
     require('./authenticate'),
     require('./hiscores'),
-    require('./news'),
+    require('./web-content'),
     require('./player'),
     require('./world')
 ];

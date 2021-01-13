@@ -138,6 +138,13 @@ CREATE TABLE IF NOT EXISTS `news` (
     `body` TEXT
 );
 
+CREATE TABLE IF NOT EXISTS `god_letters` (
+    `id` integer not null primary key autoincrement,
+    `date` datetime default (strftime('%s', 'now')),
+    `title` varchar(255),
+    `body` TEXT
+);
+
 CREATE TABLE IF NOT EXISTS `uploads` (
     `id` integer not null primary key autoincrement,
     `name` varchar(255),

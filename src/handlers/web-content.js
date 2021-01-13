@@ -21,11 +21,21 @@ async function getNews({
     this.socket.sendMessage({ token, articles, pages });
 }
 
-async function addNews({ token, title, category, body }) {}
+async function addNews({ token, title, date, category, body }) {
+    const queryHandler = this.server.queryHandler;
+    date = date || Math.floor(Date.now() / 1000);
+
+    try {
+        queryHandler.insertNews({ title, category, body, date });
+        this.socket.sendMessage({ token, success: true });
+    } catch (e) {
+        this.socket.sendMessage({ token, success: false });
+    }
+}
 
 async function editNews({ token, id, title, category, body }) {}
 
-async function uploadFile({ token, name, file }) {}
+async function addFile({ token, name, file }) {}
 
 async function getFile({ token, name }) {
     const queryHandler = this.server.queryHandler;
@@ -35,4 +45,17 @@ async function getFile({ token, name }) {
     this.socket.sendMessage({ token, file });
 }
 
-module.exports = { getNews, addNews, editNews, uploadFile, getFile };
+async function getGodLetter({ token, id }) {
+    const queryHandler = this.server.queryHandler;
+
+    this.socket.sendMessage({ token, letters: queryHandler.getGodLetter(id) });
+}
+
+module.exports = {
+    getNews,
+    addNews,
+    editNews,
+    addFile,
+    getFile,
+    getGodLetter
+};

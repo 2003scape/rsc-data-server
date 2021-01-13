@@ -4,6 +4,22 @@ player storage, friend communication, etc. jagex refered to theirs as the
 loginserver.  this server uses [JSON](https://www.npmjs.com/package/json-socket)
 to communicate with rsc-server over TCP or UNIX file sockets for IPC.
 
+features:
+ * [sqlite database backend](https://sqlite.org/whentouse.html#serversidedb)
+utilizing [better-sqlite3](https://github.com/JoshuaWise/better-sqlite3)
+with 100% prepared queries for incredible performance and ACID-compliant
+transactions with no DBMS setup required
+* simplified table schema with no unnecessary JOINs and utilization of
+[sqlite's native json support](https://www.sqlite.org/json1.html) when
+appropriate
+ * multiple world support. connect more than one instance of
+[rsc-server](https://github.com/2003scape/rsc-server) with different world IDs
+for cross-world player private messaging
+ * automatic hiscore rank updating with the ability to immediately fetch and
+compare player skill ranks on the fly
+* time-throttled logins with secure, bcrypt password storage and automatic
+re-hashing upon `config.passwordHash` modification
+
 ## install
 
     # npm install @2003scape/rsc-data-server # -g for the CLI program

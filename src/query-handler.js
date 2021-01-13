@@ -157,9 +157,16 @@ class QueryHandler {
                 'ORDER BY `date` DESC ' +
                 `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
             getNews: 'SELECT * FROM `news` WHERE `id` = ?',
+            insertNews:
+                'INSERT INTO `news` (`date`, `category`, `title`, `body`) ' +
+                'VALUES (:date, :category, :title, :body)',
             getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?',
             getWebPlayer:
-                'SELECT `id`, `rank` FROM `players` WHERE `username` = ?'
+                'SELECT `id`, `rank` FROM `players` WHERE `username` = ?',
+            searchGodLetters:
+                'SELECT `id`, `title`, `date` FROM `god_letters` ' +
+                'ORDER BY `date` DESC',
+            getGodLetter: 'SELECT * FROM `god_letters` WHERE `id` = ?'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -506,12 +513,24 @@ class QueryHandler {
         return { articles, pages };
     }
 
+    insertNews(article) {
+        return this.statements.insertNews.run(article);
+    }
+
     getFile(name) {
         return this.statements.getFile.pluck().get(name);
     }
 
     getWebPlayer(username) {
         return this.statements.getWebPlayer.get(username);
+    }
+
+    getGodLetter(id) {
+        if (typeof id === 'number') {
+            return this.statements.getGodLetter.get(id);
+        }
+
+        return this.statements.searchGodLetters.all();
     }
 
     sync() {

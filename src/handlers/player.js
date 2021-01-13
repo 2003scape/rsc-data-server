@@ -212,7 +212,6 @@ async function playerRegister({ token, username, password, ip }) {
     }
 
     const queryHandler = this.server.queryHandler;
-
     const ipLoginCount = queryHandler.getPlayerLoginCount(ip);
 
     if (ipLoginCount >= this.server.config.playersPerIP) {
