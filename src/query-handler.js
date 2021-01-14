@@ -165,6 +165,7 @@ class QueryHandler {
                 'UPDATE `news` SET ' +
                 '`title` = :title, `body` = :body, `date` = :date ' +
                 'WHERE `id` = :id',
+            deleteNews: 'DELETE FROM `news` WHERE `id` = ?',
             getFile: 'SELECT `file` FROM `uploads` WHERE `name` = ?',
             getWebPlayer:
                 'SELECT `id`, `rank` FROM `players` WHERE `username` = ?',
@@ -524,6 +525,10 @@ class QueryHandler {
 
     editNews(article) {
         return this.statements.editNews.run(article);
+    }
+
+    deleteNews(id) {
+        return this.statements.deleteNews.run(id);
     }
 
     getFile(name) {

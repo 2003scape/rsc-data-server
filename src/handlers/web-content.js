@@ -27,14 +27,23 @@ async function addNews({ token, id, title, date, category, body }) {
     const queryHandler = this.server.queryHandler;
 
     try {
-        console.log(id, body);
-
         if (typeof id === 'number') {
             queryHandler.editNews({ id, title, category, body, date });
         } else {
             queryHandler.insertNews({ title, category, body, date });
         }
 
+        this.socket.sendMessage({ token, success: true });
+    } catch (e) {
+        this.socket.sendMessage({ token, success: false });
+    }
+}
+
+async function deleteNews({ token, id }) {
+    const queryHandler = this.server.queryHandler;
+
+    try {
+        queryHandler.deleteNews(id);
         this.socket.sendMessage({ token, success: true });
     } catch (e) {
         this.socket.sendMessage({ token, success: false });
@@ -60,6 +69,7 @@ async function getGodLetter({ token, id }) {
 module.exports = {
     getNews,
     addNews,
+    deleteNews,
     addFile,
     getFile,
     getGodLetter
