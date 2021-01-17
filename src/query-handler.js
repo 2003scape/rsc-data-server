@@ -63,7 +63,7 @@ const TOTAL_EXP = `(\`exp_${skills.join('` + `exp_')}\`) AS \`experience\``;
 const RANKS_PER_PAGE = 16;
 
 const SUMMARY_LENGTH = 140;
-const NEWS_PER_PAGE = 10;
+const PER_PAGE = 10;
 
 function getHiscorePages(database) {
     return Math.ceil(
@@ -155,7 +155,7 @@ class QueryHandler {
                 'CASE WHEN :before > -1 AND :after > -1 THEN ' +
                 '`date` < :before AND `date` >= :after ELSE true END ' +
                 'ORDER BY `date` DESC ' +
-                `LIMIT ${NEWS_PER_PAGE} OFFSET (:page * ${NEWS_PER_PAGE})`,
+                `LIMIT ${PER_PAGE} OFFSET (:page * ${PER_PAGE})`,
             getNews: 'SELECT * FROM `news` WHERE `id` = ?',
             insertNews:
                 'INSERT OR REPLACE INTO `news` ' +
@@ -172,7 +172,18 @@ class QueryHandler {
             searchGodLetters:
                 'SELECT `id`, `title`, `date` FROM `god_letters` ' +
                 'ORDER BY `date` DESC',
-            getGodLetter: 'SELECT * FROM `god_letters` WHERE `id` = ?'
+            getGodLetter: 'SELECT * FROM `god_letters` WHERE `id` = ?',
+            getPlayerMessage: 'SELECT * from `player_messages` WHERE `id` = ?',
+            searchPlayerMessages:
+                'SELECT `subject`, `date`, `unread`, ' +
+                'count(1) over() AS `total` FROM `player_messages` ' +
+                'WHERE `to_player` = ? ORDER BY `date` DESC ' +
+                `LIMIT ${PER_PAGE} OFFSET (? * ${PER_PAGE})`,
+            insertPlayerMessage:
+                'INSERT INTO `player_messages` ' +
+                '(`to_player`, `from`, `subject`, `message`) ' +
+                'SELECT `id`, :from, :subject, :message ' +
+                'FROM `players` WHERE `username` = :username'
         };
 
         for (const [name, statement] of Object.entries(this.statements)) {
@@ -490,7 +501,7 @@ class QueryHandler {
             .all(query)
             .map((article) => {
                 if (!pages) {
-                    pages = Math.ceil(article.total / NEWS_PER_PAGE);
+                    pages = Math.ceil(article.total / PER_PAGE);
                 }
 
                 const summary = article.summary.trim();
@@ -545,6 +556,29 @@ class QueryHandler {
         }
 
         return this.statements.searchGodLetters.all();
+    }
+
+    getPlayerMessages(query) {
+        if (query.id !== -1) {
+            return { messages: this.statements.getPlayerMessage.get(query.id) };
+        }
+
+        let pages =  0;
+
+        const messages = this.statements.searchPlayerMessages.all(
+            query.playerID,
+            query.page
+        ).map((message) => {
+            if (!pages) {
+                pages = Math.ceil(message.total / PER_PAGE);
+            }
+
+            delete message.total;
+
+            return message;
+        });
+
+        return { messages, pages };
     }
 
     sync() {

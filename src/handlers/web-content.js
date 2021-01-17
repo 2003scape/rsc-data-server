@@ -66,11 +66,30 @@ async function getGodLetter({ token, id }) {
     this.socket.sendMessage({ token, letters: queryHandler.getGodLetter(id) });
 }
 
+async function getPlayerMessages({ token, playerID = -1, id = -1, page = 0 }) {
+    const queryHandler = this.server.queryHandler;
+
+    this.socket.sendMessage({
+        ...queryHandler.getPlayerMessages({ playerID, id, page }),
+        token
+    });
+}
+
+async function sendPlayerMessage({
+    token,
+    toPlayerID,
+    from,
+    subject,
+    message
+}) {}
+
 module.exports = {
     getNews,
     addNews,
     deleteNews,
     addFile,
     getFile,
-    getGodLetter
+    getGodLetter,
+    getPlayerMessages,
+    sendPlayerMessage
 };

@@ -21,17 +21,16 @@ async function throttleAttempt(queryHandler, ip) {
 
     if (attempts >= 5) {
         if (Date.now() - lastDate >= 1000 * 60 * 5) {
-            return true;
+            return attempts;
         } else {
             queryHandler.setLoginAttempts(ip, 0);
             attempts = 0;
+            return 0;
         }
-    } else {
-        queryHandler.setLoginAttempts(ip, attempts + 1);
     }
 
     await sleep(attempts * 1000);
-    return false;
+    return attempts;
 }
 
 async function playerCount({ token }) {
@@ -74,8 +73,9 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     username = username.toLowerCase();
 
     const queryHandler = this.server.queryHandler;
+    const attempts = await throttleAttempt(queryHandler, ip);
 
-    if (await throttleAttempt(queryHandler, ip)) {
+    if (attempts >= 5) {
         message.code = 7;
         message.success = false;
         return this.socket.sendMessage(message);
@@ -86,6 +86,7 @@ async function playerLogin({ token, username, password, ip, reconnecting }) {
     if (!hash || !(await bcryptCompare(password, hash))) {
         message.code = 3;
         message.success = false;
+        queryHandler.setLoginAttempts(ip, attempts + 1);
         return this.socket.sendMessage(message);
     }
 
@@ -295,13 +296,16 @@ async function webLogin({ token, username, password, ip }) {
 
     const queryHandler = this.server.queryHandler;
 
-    if (await throttleAttempt(queryHandler, ip)) {
+    const attempts = await throttleAttempt(queryHandler, ip);
+
+    if (attempts >= 5) {
         return this.socket.sendMessage({ token, success: false });
     }
 
     const hash = queryHandler.getPlayerPassword(username);
 
     if (!hash || !(await bcryptCompare(password, hash))) {
+        queryHandler.setLoginAttempts(ip, attempts + 1);
         return this.socket.sendMessage({ token, success: false });
     }
 
